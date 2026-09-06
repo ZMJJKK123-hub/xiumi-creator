@@ -18,14 +18,27 @@ TUI (Textual) ──事件总线──▶ Agent 主循环 (OpenAI 兼容 functio
 
 ## 快速开始
 
+**方式一：一条命令远程安装（推荐，无需克隆）**
+
+```powershell
+pip install git+https://github.com/ZMJJKK123-hub/xiumi_agent.git
+xiumi                      # 任意目录、任意终端直接进入 TUI
+```
+
+首次运行会在 `~/.xiumi-agent/.env` 自动生成配置模板，填入 `OPENAI_API_KEY` 后重启即可。
+
+**方式二：源码运行**
+
 ```bash
+git clone https://github.com/ZMJJKK123-hub/xiumi_agent.git
+cd xiumi_agent
 pip install -r requirements.txt
 pip install -e .            # 安装全局命令 xiumi（一次性）
 copy .env.example .env      # 填 OPENAI_API_KEY / OPENAI_BASE_URL / MODEL
-xiumi                       # 任意目录、任意终端直接进入 TUI（自动拉起 Edge 并打开秀米）
+xiumi                       # 或 python main.py
 ```
 
-未安装全局命令时仍可用 `python main.py`；`xiumi recon` = 踩点，`xiumi version` = 版本。
+`xiumi recon` = 页面踩点，`xiumi version` = 版本。
 
 首次使用：TUI 弹出登录窗口 → 选「微信扫码」（二维码图片自动弹出）或「账号密码」→ 登录一次长期保留。
 

@@ -1,11 +1,11 @@
 # 自测指南
 
-## 一次性准备
+## 安装与一次性准备
 
 ```powershell
-cd C:\Users\59639\Desktop\xiumi-agent
-copy .env.example .env    # 填 OPENAI_API_KEY（智谱默认，可换其他兼容接口）
-xiumi                     # 已装全局命令，任意目录直接进；也可 python main.py
+pip install git+https://github.com/ZMJJKK123-hub/xiumi_agent.git   # 远程一条命令安装
+notepad %USERPROFILE%\.xiumi-agent\.env                            # 首次运行 xiumi 后自动生成，填 OPENAI_API_KEY
+xiumi                                                               # 任意目录直接进
 ```
 
 首次启动会自动拉起 Edge 打开秀米 → 弹登录窗口（**扫码**：二维码自动弹出系统看图器；**账密**：弹输入框，滑块验证码需你在浏览器里手动拖一下）。登录一次长期保留在 `.edge-profile/`。
