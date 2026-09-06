@@ -1,0 +1,5 @@
+include README.md
+include .env.example
+include TESTING.md
+recursive-include examples *.md
+recursive-include plugins *.json

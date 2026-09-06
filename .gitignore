@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.env
+.edge-profile/
+screenshots/
+recon/
+logs/
+dist/
+build/
+*.egg-info/
+.venv/
+venv/
+.zcode/

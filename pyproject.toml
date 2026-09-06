@@ -1,0 +1,28 @@
+[project]
+name = "xiumi-agent"
+version = "0.1.0"
+description = "TUI agent that drives your Edge browser via CDP to auto-produce WeChat article layouts on xiumi.us"
+requires-python = ">=3.10"
+dependencies = [
+    "textual>=0.60",
+    "openai>=1.40",
+    "websockets>=12",
+    "python-dotenv>=1.0",
+]
+
+[project.scripts]
+xiumi = "main:main"
+
+[project.optional-dependencies]
+dev = []
+
+[tool.setuptools]
+py-modules = ["main"]
+packages = [
+    "core", "cdp", "tui", "scripts",
+    "plugins", "plugins.browser", "plugins.tool_browser",
+    "plugins.xiumi_login", "plugins.xiumi_editor",
+]
+
+[tool.setuptools.package-data]
+"*" = ["selectors.json"]

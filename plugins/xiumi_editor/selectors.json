@@ -1,0 +1,11 @@
+{
+  "_comment": "排版编辑器选择器。editor_new_url 与各选择器需用 scripts/recon.py 登录后踩点确认；失败时插件/Agent 会用 outline+findByText 自适应，exec_js 兜底。",
+  "editor_new_url": "https://xiumi.us/studio/v5",
+  "title_input": "input[placeholder*='标题'], .title input, [ng-model*='title'] input",
+  "title_text_hint": "标题",
+  "save_text": "保存",
+  "copy_texts": ["拷贝到公众号", "复制到公众号", "拷贝", "复制"],
+  "upload_button_text": "图片",
+  "file_input": "input[type='file']",
+  "canvas_selector": ""
+}
