@@ -30,14 +30,14 @@ xiumi                      # 任意目录、任意终端直接进入 TUI
 **方式二：从 GitHub 安装（获取最新开发版）**
 
 ```powershell
-pip install git+https://github.com/ZMJJKK123-hub/xiumi_agent.git
+pip install git+https://github.com/ZMJJKK123-hub/xiumi-creator.git
 ```
 
 **方式三：源码运行**
 
 ```bash
-git clone https://github.com/ZMJJKK123-hub/xiumi_agent.git
-cd xiumi_agent
+git clone https://github.com/ZMJJKK123-hub/xiumi-creator.git
+cd xiumi-creator
 pip install -r requirements.txt
 pip install -e .            # 安装全局命令 xiumi（一次性）
 copy .env.example .env      # 填 OPENAI_API_KEY / OPENAI_BASE_URL / MODEL

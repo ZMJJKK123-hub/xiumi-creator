@@ -3,7 +3,7 @@
 ## 安装与一次性准备
 
 ```powershell
-pip install git+https://github.com/ZMJJKK123-hub/xiumi_agent.git   # 远程一条命令安装
+pip install git+https://github.com/ZMJJKK123-hub/xiumi-creator.git   # 远程一条命令安装
 notepad %USERPROFILE%\.xiumi-agent\.env                            # 首次运行 xiumi 后自动生成，填 OPENAI_API_KEY
 xiumi                                                               # 任意目录直接进
 ```
