@@ -27,7 +27,7 @@ DIM_ACCENT = "#a8542f"    # 暗橙（分隔线）
 GRAY = "#8E8E8E"          # 次级文本/边框
 RED = "#E05252"           # 错误
 USER_BAR_BG = "#2A2A2A"   # 用户命令条背景
-VERSION = "v0.1.0"
+VERSION = "v0.1.1"
 
 # mascot 像素图案预留位：等图案定稿后填入（每行一个字符串，可用 █▄ 块字符），自动以主色渲染
 MASCOT_ART: list[str] | None = None

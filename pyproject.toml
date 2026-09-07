@@ -1,7 +1,8 @@
 [project]
 name = "xiumiagent"
-version = "0.1.0"
+version = "0.1.1"
 description = "TUI agent that drives your Edge browser via CDP to auto-produce WeChat article layouts on xiumi.us (command: xiumi)"
+readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "textual>=0.60",
