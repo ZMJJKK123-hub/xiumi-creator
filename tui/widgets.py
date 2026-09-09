@@ -1,205 +1,93 @@
-"""终端流水渲染：严格按项目 UI 规格书实现（Claude Code v2.1.158 风格）。
+"""终端组件：任务输入框与对话流水渲染器。
 
-规格要点：
-- 配色：背景 #0C0C0C · 主色 #E06C38（橙）· 亮白 #FFFFFF · 灰 #8E8E8E · 错误 #E05252
-- 欢迎头部卡片：橙色圆角框、标题嵌入上边框、左(欢迎+mascot+元信息)右(Tips/What's new)双栏、暗橙竖分隔线
-- 交互流水：用户命令条（全宽 #2A2A2A 背景条 `> cmd`）；子结果用 L 形树 `└`（灰），嵌套结果再缩进一层
-- 错误用 X 前缀红色；空结果显示 (no content)
-- mascot 像素图案预留位（MASCOT_ART，定稿后填入即可）
+Rule2 §1 表现层组件；颜色常量在 theme，纯算法在 textutils，
+欢迎卡构建在 welcome——本文件只保留组件本身。
 """
 from __future__ import annotations
 
-from rich import box
-from rich.align import Align
-from rich.box import Box
-from rich.cells import cell_len
-from rich.console import Group
-from rich.panel import Panel
-from rich.padding import Padding
-from rich.rule import Rule
-from rich.table import Table
-from rich.text import Text
-from textual import events
-from textual.widgets import Input, RichLog
+from rich.text import Text  # 富文本行，流水各元素的载体
+from textual import events  # 按键事件类型，用于 ? 快捷键拦截
+from textual.widgets import Input, RichLog  # 输入框与滚动日志基类
 
-ACCENT = "#E06C38"        # 主色（暖橙/陶土）
-DIM_ACCENT = "#a8542f"    # 暗橙（分隔线）
-GRAY = "#8E8E8E"          # 次级文本/边框
-RED = "#E05252"           # 错误
-USER_BAR_BG = "#2A2A2A"   # 用户命令条背景
-VERSION = "v0.1.1"
-
-# mascot 像素图案预留位：等图案定稿后填入（每行一个字符串，可用 █▄ 块字符），自动以主色渲染
-MASCOT_ART: list[str] | None = None
-
-QUICKREF = [
-    "/model 名称   设置模型",
-    "/file 路径    载入任务文件",
-    "/login        登录",
-    "/shot         截图",
-    "?            帮助",
-    "esc          中断任务",
-    "↑ ↓          输入历史",
-    "PgUp PgDn    翻看消息",
-    "ctrl+q       退出",
-]
-
-# 只有列间竖线（row.cross=│），无外框无横线的 box —— 欢迎卡双栏之间的暗橙分隔线
-INNER_DIVIDER = Box(
-    "    \n"  # top
-    "    \n"  # head
-    "    \n"  # head_row
-    "    \n"  # mid
-    "  │ \n"  # row: 左空 横空 竖│ 右空
-    "    \n"  # foot_row
-    "    \n"  # foot
-    "    "    # bottom
-)
-
-
-def _truncate_cells(line: str, max_cells: int) -> str:
-    """按显示宽度截断（CJK 一字占两格），截后含省略号不超过 max_cells。"""
-    if cell_len(line) <= max_cells:
-        return line
-    out = ""
-    for ch in line:
-        if cell_len(out + ch) + 1 > max_cells:  # 留 1 格给 …
-            break
-        out += ch
-    return out + "…"
-
-
-def _hanging_bullets(lines: list[str], width_cells: int = 40) -> list[Text]:
-    """把条目按显示宽度折行，首行 `· ` 前缀、续行两格悬挂缩进（避免顶格换行）。
-
-    入参若已带 "· " 前缀会先剥掉，统一由本函数添加，防止出现双重前缀。
-    """
-    out: list[Text] = []
-    for raw_line in lines:
-        line = raw_line.lstrip()
-        if line.startswith("·"):
-            line = line[1:].lstrip()
-        elif line.startswith("- "):
-            line = line[2:].lstrip()
-        first = True
-        while line:
-            limit = width_cells - 2
-            chunk = line
-            while cell_len(chunk) > limit:
-                chunk = chunk[:-1]
-            if chunk != line and " " in chunk:
-                cut = chunk.rfind(" ")
-                if cut > 2:
-                    chunk, rest = chunk[:cut], line[cut + 1 :]
-                else:
-                    rest = line[len(chunk) :]
-            elif chunk != line:
-                rest = line[len(chunk) :]
-            else:
-                rest = ""
-            out.append(Text(("· " if first else "  ") + chunk.rstrip(), style="white"))
-            line = rest.lstrip()
-            first = False
-    return out
+from tui.textutils import fold_multiline, truncate_cells  # 折行与显示宽度截断
+from tui.theme import GRAY, RED, USER_BAR_BG  # 主题常量
+from tui.welcome import build_welcome  # 欢迎卡构建（双栏/简版）
 
 
 class TaskInput(Input):
-    """任务输入框：输入为空时按 ? 直接打开快捷键帮助（Claude Code 行为），非空时正常输入。
+    """任务输入框：输入为空时按 ? 打开帮助，非空时 ? 为普通字符。
 
-    注意：Textual 按 MRO 分别派发子类与基类的 _on_key，这里对非 ? 按键
-    不做任何处理（也不调 super()），交由 Input 基类自身的 _on_key 完成输入。
+    类变量：无。实例状态继承 Input。
+    生命周期：compose 时创建，焦点常驻；? 拦截走 MRO 双派发机制，
+    非 ? 按键交由 Input 基类 _on_key 处理（勿调 super 避免协程泄漏）。
     """
 
     def _on_key(self, event: events.Key) -> None:
+        """按键拦截：空输入的 question_mark 打开帮助并阻止输入。
+
+        Args: event 按键事件。Returns: None。Calls: app.open_help。
+        """
         if event.key == "question_mark" and not self.value.strip():
             event.stop()
             event.prevent_default()
-            self.app.action_help()
+            self.app.open_help()
 
 
 class Transcript(RichLog):
-    """单栏滚动流水：用户命令条 / 工具执行 / 结果 / 提示按序写入。
+    """单栏滚动流水：命令条、工具调用、结果、提示按序写入。
 
-    wrap=True + min_width=0：按实际宽度换行、不强制 78 列最小宽，
-    配合按显示宽度的截断，彻底避免横向滚动条。
+    类变量：can_focus=False（焦点恒留输入框）。
+    实例：wrap=True + min_width=0 按实际宽度换行，杜绝横向滚动条。
+    生命周期：compose 创建，App 全程复用；_w() 在 layout 未完成时回退终端宽。
     """
 
+    can_focus = False
+
     def __init__(self, *args, **kwargs) -> None:
+        """初始化：注入换行与最小宽度策略。
+
+        Args: *args/**kwargs 透传 RichLog（id 等）。
+        """
         kwargs.setdefault("wrap", True)
         kwargs.setdefault("min_width", 0)
         super().__init__(*args, **kwargs)
 
     def _w(self) -> int:
-        """可用内容宽度：layout 未完成(size=0)时回退到终端宽度。"""
+        """可用内容宽度；layout 未完成(size=0)时回退 app 终端宽。
+
+        Args: None。Returns: int 显示格数。
+        """
         if self.size.width:
             return self.size.width
         try:
             return self.app.size.width
-        except Exception:
+        except Exception:  # noqa: BLE001 无 app 上下文的兜底（理论不可达）
             return 80
 
-    # ---- 欢迎头部卡片 ----
     def write_welcome(self, model: str = "-", cwd: str = "-") -> None:
-        title = Text()
-        title.append(" xiumi-agent ", style=f"bold {ACCENT}")
-        title.append(VERSION, style=GRAY)
+        """写入欢迎卡：宽终端双栏，窄终端简版。
 
-        # 窄终端：双栏卡片自然宽度放不下（会撑出横向滚动条），退化为单栏简版
-        if self._w() < 62:
-            content = Group(
-                Text("Welcome back!", style="bold white", justify="center"),
-                Text(),
-                Align.center(Text(f"模型: {model}", style=GRAY)),
-                Align.center(Text(cwd, style=f"dim {GRAY}", overflow="fold")),
-                Text(),
-                Text("· 输入任务回车开始", style="white"),
-                Text("· ? 查看帮助", style="white"),
-            )
-            self.write(Panel(content, title=title, title_align="left", border_style=ACCENT, padding=(0, 1)))
-            self.write("")
-            return
-
-        left_lines: list = [Align.center(Text("Welcome back!", style="bold white")), Text()]
-        if MASCOT_ART:
-            left_lines += [Align.center(Text(row, style=ACCENT)) for row in MASCOT_ART]
-        else:
-            left_lines += [Text() for _ in range(4)]  # 图案预留位（空行）
-        left_lines += [
-            Align.center(Text(f"模型: {model}", style=GRAY)),
-            Align.center(Text(cwd, style=f"dim {GRAY}", overflow="fold")),  # 折行显示完整路径
-        ]
-        left = Group(*left_lines)
-
-        # 右栏实际内容宽（卡片总宽 - 边框/内边距/左栏 45%），据此折行避免错乱
-        tips_width = max(int((self._w() - 8) * 0.55) - 2, 24)
-        right = Group(
-            Text("命令与快捷键", style=f"bold {ACCENT}"),
-            *_hanging_bullets(QUICKREF, tips_width),
-            Text("输入任务回车即可开始", style=f"italic {GRAY}"),
-        )
-
-        grid = Table(box=INNER_DIVIDER, show_header=False, show_edge=False, expand=True, border_style=DIM_ACCENT)
-        grid.add_column(ratio=45)
-        grid.add_column(ratio=55)
-        grid.add_row(Padding(left, (0, 1)), Padding(right, (0, 1, 0, 0)))
-
-        self.write(Panel(grid, title=title, title_align="left", border_style=ACCENT, padding=(0, 1)))
+        Args: model 模型显示文案; cwd 工作目录。Returns: None。
+        """
+        self.write(build_welcome(model, cwd, self._w()))
         self.write("")
 
-    # ---- 交互流水 ----
     def write_user(self, text: str) -> None:
-        """用户命令条：全宽 #2A2A2A 背景条 `> cmd`；多行折叠为首行 + 行数标记。"""
+        """用户命令条：全宽背景条 + 多行折叠摘要。
+
+        Args: text 用户原始输入。Returns: None。
+        """
         width = max(self._w() - 2, 12)
-        lines = [ln for ln in text.rstrip().splitlines() if ln.strip()]
-        if len(lines) > 1:
-            line = f"> {lines[0].strip()}  ⏎ …({len(lines)} 行)"
-        else:
-            line = "> " + (lines[0].strip() if lines else "")
-        line = _truncate_cells(line, width)  # 按显示宽度截断，避免 CJK 溢出
-        pad = " " * max(width - cell_len(line), 0)
+        folded, _ = fold_multiline(text)
+        line = truncate_cells(f"> {folded}", width)
+        pad = " " * max(width - _cells(line), 0)
         self.write(Text(line + pad, style=f"on {USER_BAR_BG} bold white"))
 
     def write_assistant(self, text: str) -> None:
+        """助手回复：⏺ 粗体前缀 + 正文。
+
+        Args: text 回复文本。Returns: None。
+        """
         t = Text()
         t.append("⏺ ", style="bold white")
         t.append(text.rstrip() + "\n")
@@ -207,10 +95,13 @@ class Transcript(RichLog):
         self.write("")
 
     def write_action(self, name: str, args: dict) -> None:
+        """工具调用行：└ + 粗体工具名 + 灰色参数（按宽度截断）。
+
+        Args: name 工具名; args 参数字典。Returns: None。
+        """
         brief = ", ".join(f"{k}={str(v)[:50]!r}" for k, v in list(args.items())[:4])
-        # 参数按显示宽度截断，保证整行不溢出
-        budget = max(self._w() - 4 - cell_len(name) - 2, 10)
-        brief = _truncate_cells(brief, budget)
+        budget = max(self._w() - 4 - _cells(name) - 2, 10)
+        brief = truncate_cells(brief, budget)
         t = Text("└ ", style=GRAY)
         t.append(name, style="bold white")
         if brief:
@@ -218,30 +109,48 @@ class Transcript(RichLog):
         self.write(t)
 
     def write_result(self, name: str, result: str) -> None:
-        if not result.strip():
-            lines = ["(no content)"]
-        else:
-            lines = result.rstrip().splitlines()
+        """工具结果行：两格缩进 └，灰字；空结果显 (no content)；错误红字；超两行折叠。
+
+        Args: name 工具名（日志定位用）; result 结果文本。Returns: None。
+        """
+        lines = result.rstrip().splitlines() if result.strip() else ["(no content)"]
         shown = lines if len(lines) <= 2 else lines[:2] + ["…"]
         limit = max(self._w() - 6, 20)
         style = f"bold {RED}" if result.startswith("ERROR") else GRAY
         t = Text()
         for i, ln in enumerate(shown):
-            t.append(("  └ " if i == 0 else "    ") + _truncate_cells(ln, limit) + "\n", style=style)
+            t.append(("  └ " if i == 0 else "    ") + truncate_cells(ln, limit) + "\n", style=style)
         self.write(t)
 
     def write_system(self, text: str) -> None:
+        """系统提示：└ 灰字；⚠/❌ 前缀错误转红色 X 行。
+
+        Args: text 提示文本。Returns: None。
+        """
         stripped = text.rstrip()
-        is_err = stripped.startswith(("⚠", "❌", "X "))
         t = Text()
-        if is_err:
+        if stripped.startswith(("⚠", "❌")):
             t.append("X ", style=f"bold {RED}")
-            t.append(stripped.lstrip("⚠❌X ").strip() + "\n", style=RED)
+            t.append(stripped.lstrip("⚠❌ ").strip() + "\n", style=RED)
         else:
             t.append("└ ", style=GRAY)
             t.append(stripped + "\n", style=GRAY)
-        self.write(t)  # 真正写入内容（此前误写成空串导致系统行全部丢失）
+        self.write(t)
         self.write("")
 
     def write_tool_note(self, text: str) -> None:
+        """轻量附注行（截图路径等）：两格缩进 └ 灰字。
+
+        Args: text 附注文本。Returns: None。
+        """
         self.write(Text("  └ " + text, style=GRAY))
+
+
+def _cells(s: str) -> int:
+    """字符串显示宽度（CJK 一字两格）。
+
+    Args: s 输入串。Returns: int 显示格数。
+    """
+    from rich.cells import cell_len  # 局部导入避免模块级第三方耦合
+
+    return cell_len(s)

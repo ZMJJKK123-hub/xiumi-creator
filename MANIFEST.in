@@ -3,3 +3,5 @@ include .env.example
 include TESTING.md
 recursive-include examples *.md
 recursive-include plugins *.json
+
+cdp/jslib.js

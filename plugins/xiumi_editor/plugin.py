@@ -138,7 +138,8 @@ async def _preview(ctx: AppContext, args: dict) -> str:
         out = await tab.screenshot(path=path, selector=selector)
     except Exception:
         out = await tab.screenshot(path=path)
-    await ctx.events.emit("screenshot", path=str(out))
+    from core.events import Event, EventType  # 截图完成事件
+    await ctx.events.emit(Event(EventType.SCREENSHOT, path=str(out)))
     return f"编辑器截图已保存: {out}"
 
 
@@ -154,74 +155,46 @@ async def _copy_for_wechat(ctx: AppContext, args: dict) -> str:
     return "ERROR: 找不到复制按钮，请 outline 观察"
 
 
+def _toolspecs() -> list[tuple]:
+    """工具四元组清单：name/description/parameters/handler。
+
+    Args: None。Returns: list[tuple]，_build_tools 据此构造 Tool。
+    """
+    return [
+        ("xiumi_new_draft", "新建一篇图文草稿并设置标题", {
+            "type": "object", "properties": {"title": {"type": "string", "description": "文章标题"}},
+            "required": ["title"]}, _new_draft),
+        ("xiumi_set_title", "修改当前图文的标题", {
+            "type": "object", "properties": {"title": {"type": "string"}}, "required": ["title"]}, _set_title),
+        ("xiumi_insert_html",
+         "向正文末尾插入一段微信排版 HTML 块，遵守系统提示词排版规范，每次一个块级片段", {
+             "type": "object", "properties": {"html": {"type": "string", "description": "HTML 片段，以 < 开头"}},
+             "required": ["html"]}, _insert_html),
+        ("xiumi_insert_image", "上传本地图片到秀米图库并尝试插入，对应任务里的 [img:路径] 标记", {
+            "type": "object", "properties": {"path": {"type": "string", "description": "本地图片路径"}},
+            "required": ["path"]}, _insert_image),
+        ("xiumi_save", "保存当前图文草稿", {"type": "object", "properties": {}}, _save),
+        ("xiumi_preview", "截图当前编辑器画面，检查排版效果", {
+            "type": "object", "properties": {"filename": {"type": "string", "description": "截图文件名"}}, }, _preview),
+        ("xiumi_copy_for_wechat", "点击复制到公众号，内容进剪贴板可在公众号后台粘贴，仅在用户明确要求时使用",
+         {"type": "object", "properties": {}}, _copy_for_wechat),
+    ]
+
+
 class XiumiEditorPlugin(Plugin):
+    """xiumi_editor 插件：秀米排版编辑器业务工具。
+
+    类职责：注册新建草稿/设标题/插 HTML/插图/保存/预览/复制七个工具。
+    类变量：name/description 元信息。
+    生命周期：PluginManager 装载时实例化并调用 tools()。
+    """
+
     name = "xiumi_editor"
     description = "秀米排版编辑器：新建图文、设标题、插入 HTML 块、上传插图、保存、预览、复制到公众号"
 
     def tools(self, ctx: AppContext) -> list[Tool]:
-        return [
-            Tool(
-                name="xiumi_new_draft",
-                description="新建一篇图文草稿并设置标题。会在编辑器就绪后进入正文编辑状态。",
-                parameters={
-                    "type": "object",
-                    "properties": {"title": {"type": "string", "description": "文章标题"}},
-                    "required": ["title"],
-                },
-                handler=_new_draft,
-            ),
-            Tool(
-                name="xiumi_set_title",
-                description="修改当前图文的标题",
-                parameters={
-                    "type": "object",
-                    "properties": {"title": {"type": "string"}},
-                    "required": ["title"],
-                },
-                handler=_set_title,
-            ),
-            Tool(
-                name="xiumi_insert_html",
-                description=(
-                    "向正文末尾插入一段微信排版 HTML 块（必须遵守系统提示词的排版规范：内联样式、"
-                    "section 嵌套、无 div/script）。每次调用插入一个块级片段。"
-                ),
-                parameters={
-                    "type": "object",
-                    "properties": {"html": {"type": "string", "description": "HTML 片段，以 < 开头"}},
-                    "required": ["html"],
-                },
-                handler=_insert_html,
-            ),
-            Tool(
-                name="xiumi_insert_image",
-                description="上传本地图片到秀米图库并尝试插入（对应任务里的 [img:路径] 标记）",
-                parameters={
-                    "type": "object",
-                    "properties": {"path": {"type": "string", "description": "本地图片绝对或相对路径"}},
-                    "required": ["path"],
-                },
-                handler=_insert_image,
-            ),
-            Tool(
-                name="xiumi_save",
-                description="保存当前图文草稿",
-                parameters={"type": "object", "properties": {}},
-                handler=_save,
-            ),
-            Tool(
-                name="xiumi_preview",
-                description="截图当前编辑器画面，用于检查排版效果",
-                parameters={
-                    "type": "object",
-                    "properties": {"filename": {"type": "string", "description": "截图文件名（可省略）"}},
-                },
-                handler=_preview,
-            ),
-            Tool(
-                name="xiumi_copy_for_wechat",
-                description="点击「复制到公众号」，内容进剪贴板后可在公众号后台粘贴（仅在用户明确要求时使用）",
-                parameters={"type": "object", "properties": {}},
-                handler=_copy_for_wechat,
-            ),
-        ]
+        """按 _toolspecs 清单构造工具。
+
+        Args: ctx 上下文（声明留作扩展）。Returns: Tool 列表。
+        """
+        return [Tool(name, desc, params, handler) for name, desc, params, handler in _toolspecs()]

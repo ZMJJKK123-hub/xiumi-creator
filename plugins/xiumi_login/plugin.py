@@ -15,6 +15,8 @@ import os
 from pathlib import Path
 
 from cdp.helpers import Tab
+from core.events import Event, EventType  # 强类型事件
+from core.log import get_logger  # 分步函数的边界异常记录  # 强类型事件
 from core.registry import AppContext, Plugin, Tool
 
 HERE = Path(__file__).parent
@@ -99,72 +101,94 @@ async def _fill_input(tab: Tab, css: str, value: str, label: str) -> None:
     await tab.agent("type", found[0]["ref"], value)
 
 
+async def _ensure_agreement(tab: Tab, css: str) -> bool:
+    """勾选服务使用协议复选框。
+
+    Args: tab 页面标签; css 复选框选择器。Returns: 是否找到复选框。
+    """
+    try:
+        state = await tab.evaluate(
+            f"(function(){{var c=document.querySelector({json.dumps(css)});"
+            f"if(!c) return 'missing'; if(c.checked) return 'checked'; c.click(); return 'clicked';}})()"
+        )
+    except Exception as exc:  # noqa: BLE001 页面上下文切换期间的评估失败按未找到处理
+        state = "missing"
+        get_logger(__name__).debug("协议勾选检查失败: %s", exc)
+    return state != "missing"
+
+
+async def _click_login_button(tab: Tab, sel: dict) -> bool:
+    """定位并点击登录提交按钮。
+
+    Args: tab 页面标签; sel 选择器集。Returns: 是否成功点击。
+    """
+    btns = await tab.agent("find", sel["submit_button"], 3)
+    if not btns:
+        btns = await tab.agent("findByText", sel["submit_text"], "button", 3)
+    if not btns:
+        return False
+    await tab.agent("click", btns[0]["ref"])
+    await asyncio.sleep(2.0)
+    return True
+
+
+async def _notify_captcha_if_visible(tab: Tab, ctx: AppContext, css: str) -> None:
+    """滑块验证码可见时发 CAPTCHA_REQUIRED 事件（需人工完成）。"""
+    try:
+        visible = await tab.evaluate(
+            f"(function(){{var f=document.querySelector({json.dumps(css)});"
+            f"if(!f) return false; var r=f.getBoundingClientRect(); return r.width>50&&r.height>50;}})()"
+        )
+    except Exception as exc:  # noqa: BLE001 评估失败视为不可见
+        visible = False
+        get_logger(__name__).debug("滑块检测失败: %s", exc)
+    if visible:
+        await ctx.events.emit(Event(EventType.CAPTCHA_REQUIRED))
+
+
+async def _handle_sms_challenge(tab: Tab, ctx: AppContext, sel: dict) -> None:
+    """短信验证码流程：等 TUI 补输后填入并再次提交。"""
+    try:
+        sms = await tab.agent("find", sel["sms_input"], 3)
+        sms = [d for d in sms if d.get("tag") == "input"]
+    except Exception as exc:  # noqa: BLE001 无短信输入框属正常路径
+        sms = []
+        get_logger(__name__).debug("短信输入框探测失败: %s", exc)
+    if not sms:
+        return
+    await ctx.events.emit(Event(EventType.SMS_REQUIRED))
+    code = await _wait_sms_code(ctx)
+    await tab.agent("type", sms[0]["ref"], code)
+    await asyncio.sleep(0.3)
+    submit2 = await tab.agent("find", sel["submit_button"], 3)
+    if submit2:
+        await tab.agent("click", submit2[0]["ref"])
+
+
 async def _password_login(ctx: AppContext, account: str, password: str) -> None:
-    """账密登录：填表 → 勾协议 → 提交；滑块/短信验证码需要用户人工辅助。"""
+    """账密登录主流程：导航 → 填表 → 勾协议 → 提交 → 人工辅助 → 轮询结果。
+
+    Globals Used: None。Calls: _fill_input/_ensure_agreement/_click_login_button/
+    _notify_captcha_if_visible/_handle_sms_challenge/_wait_login。
+    Args: ctx 上下文; account 账号; password 密码（不进 LLM）。Returns: None。
+    """
     sel = _selectors()
     tab = ctx.require_tab()
     await tab.navigate(sel["auth_url"])
 
     await _fill_input(tab, sel["account_input"], account, "账号")
     await _fill_input(tab, sel["password_input"], password, "密码")
-
-    # 勾选《服务使用协议》（默认未勾选，不勾无法登录）
-    try:
-        checked = await tab.evaluate(
-            f"(function(){{var c=document.querySelector({json.dumps(sel['agreement_checkbox'])});"
-            f"if(!c) return 'missing'; if(c.checked) return 'checked'; c.click(); return 'clicked';}})()"
-        )
-    except Exception:
-        checked = "missing"
-    if checked == "missing":
-        await ctx.events.emit("status", text="未找到协议勾选框，若登录失败请手动勾选")
-
-    btns = await tab.agent("find", sel["submit_button"], 3)
-    if not btns:
-        btns = await tab.agent("findByText", sel["submit_text"], "button", 3)
-    if not btns:
-        await ctx.events.emit("login_result", ok=False, message="找不到登录按钮，请在浏览器手动登录，我方会自动检测")
+    if not await _ensure_agreement(tab, sel["agreement_checkbox"]):
+        await ctx.events.emit(Event(EventType.STATUS, text="未找到协议勾选框，若登录失败请手动勾选"))
+    if not await _click_login_button(tab, sel):
+        await ctx.events.emit(Event(EventType.LOGIN_RESULT, ok=False,
+                                    message="找不到登录按钮，请在浏览器手动登录，我方会自动检测"))
         return
-    await tab.agent("click", btns[0]["ref"])
-    await asyncio.sleep(2.0)
-
-    # 腾讯滑块验证码：自动化不可行，浏览器就在用户眼前，提示人工滑动
-    captcha_visible = False
-    try:
-        captcha_visible = await tab.evaluate(
-            f"(function(){{var f=document.querySelector({json.dumps(sel['captcha_iframe'])});"
-            f"if(!f) return false; var r=f.getBoundingClientRect(); return r.width>50&&r.height>50;}})()"
-        )
-    except Exception:
-        pass
-    if captcha_visible:
-        await ctx.events.emit("captcha_required")
-
-    # 短信验证码
-    try:
-        sms = await tab.agent("find", sel["sms_input"], 3)
-        sms = [d for d in sms if d.get("tag") == "input"]
-    except Exception:
-        sms = []
-    if sms:
-        await ctx.events.emit("sms_required")
-        code = await _wait_sms_code(ctx)
-        await tab.agent("type", sms[0]["ref"], code)
-        await asyncio.sleep(0.3)
-        submit2 = await tab.agent("find", sel["submit_button"], 3)
-        if submit2:
-            await tab.agent("click", submit2[0]["ref"])
+    await _notify_captcha_if_visible(tab, ctx, sel["captcha_iframe"])
+    await _handle_sms_challenge(tab, ctx, sel)
 
     ok = await _wait_login(ctx, timeout=90)
     ctx.state["xiumi_logged_in"] = ok
-    if ok:
-        await ctx.events.emit("login_result", ok=True, message="账号密码登录成功")
-    else:
-        await ctx.events.emit(
-            "login_result",
-            ok=False,
-            message="登录未成功（密码错误/滑块未完成/页面变化）。请在浏览器窗口手动完成验证，或改用扫码",
-        )
 
 
 async def _wait_sms_code(ctx: AppContext, timeout: float = 180) -> str:

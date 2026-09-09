@@ -26,4 +26,4 @@ packages = [
 ]
 
 [tool.setuptools.package-data]
-"*" = ["selectors.json"]
+"*" = ["selectors.json", "jslib.js"]

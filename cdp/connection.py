@@ -11,7 +11,9 @@ import json
 import urllib.request
 from typing import Any, Callable
 
-import websockets
+import websockets  # CDP WebSocket 客户端
+
+from core.log import get_logger as _log  # 边界异常记录
 
 DEFAULT_TIMEOUT = 60.0
 
@@ -130,8 +132,8 @@ class CDPConnection:
                     for cb in list(self._event_cbs):
                         try:
                             cb(sid, method, params)
-                        except Exception:
-                            pass
+                        except Exception as exc:  # noqa: BLE001 单回调失败不阻断事件流
+                            _log.debug("事件回调失败 %s: %s", method, exc)
         except asyncio.CancelledError:
             pass
         except Exception:

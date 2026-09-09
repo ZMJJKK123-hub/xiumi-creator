@@ -57,9 +57,9 @@ def main() -> None:
     from tui.app import XiumiAgentApp
 
     try:
-        # mouse=False：不向终端申请鼠标上报模式。本应用为纯键盘交互（Claude Code 风格），
-        # 且该模式一旦因异常退出未复位，终端会被 [N;x;yM 转义码刷屏——从源头关闭。
-        XiumiAgentApp().run(mouse=False)
+        # mouse 保持默认启用：用户需要鼠标点击与滚轮；异常退出遗留的鼠标上报
+        # 模式由 _reset_terminal 兜底复位
+        XiumiAgentApp().run()
     except KeyboardInterrupt:
         pass
     finally:

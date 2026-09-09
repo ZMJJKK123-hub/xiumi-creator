@@ -7,7 +7,9 @@ from pathlib import Path
 from typing import Any
 
 from .connection import CDPConnection, CDPError, CDPEvalError
-from .jslib import AGENT_JS, call_expr
+from core.log import get_logger as _log  # 边界异常记录
+
+from .jslib import call_expr, load_agent_js  # JS 源码加载器与调用表达式构造
 
 _KEY_MAP = {
     "Enter": ("\r", "Enter", 13),
@@ -37,8 +39,8 @@ class Tab:
         for m in ("Runtime.enable", "Page.enable", "DOM.enable"):
             try:
                 await self.send(m)
-            except CDPError:
-                pass
+            except CDPError as exc:  # noqa: BLE001 单域启用失败不阻断会话
+                _log.debug("域启用失败 %s: %s", m, exc)
         self._lib_injected = False
 
     @property
@@ -73,7 +75,7 @@ class Tab:
     async def ensure_lib(self) -> None:
         if self._lib_injected:
             return
-        state = await self.evaluate(AGENT_JS)
+        state = await self.evaluate(load_agent_js())
         self._lib_injected = state in ("ok", "already")
         if not self._lib_injected:
             raise CDPError("agent JS 库注入失败")

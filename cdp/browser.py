@@ -4,7 +4,8 @@ from __future__ import annotations
 import subprocess
 from typing import Any
 
-from core.config import Config
+from core.config import Config  # Edge 路径/端口/数据目录配置
+from core.log import get_logger  # 边界异常记录
 
 from .connection import CDPConnection
 from .helpers import Tab
@@ -60,7 +61,8 @@ class EdgeBrowser:
         try:
             probe = await CDPConnection.connect(self.config.cdp_port, timeout=1.5)
             return True
-        except Exception:
+        except Exception as exc:  # noqa: BLE001 探测失败即端口未就绪
+            get_logger(__name__).debug("端口探测: %s", exc)
             return False
         finally:
             if probe:
@@ -94,8 +96,8 @@ class EdgeBrowser:
             for p in extra:
                 try:
                     await self.cdp.send("Target.closeTarget", {"targetId": p["targetId"]})
-                except Exception:
-                    pass
+                except Exception as exc:  # noqa: BLE001 关闭多余标签失败不影响主流程
+                    get_logger(__name__).debug("关闭多余标签失败 %s: %s", p.get("url"), exc)
             await asyncio.sleep(0.6)
 
     async def get_or_create_tab(self, url_contains: str = "xiumi.us", default_url: str = "https://xiumi.us/") -> Tab:
@@ -158,5 +160,5 @@ class EdgeBrowser:
                 "Browser.setWindowBounds",
                 {"windowId": res["windowId"], "bounds": {"windowState": state}},
             )
-        except Exception:
-            pass  # 窗口控制失败不影响主流程
+        except Exception as exc:  # noqa: BLE001 窗口控制失败不影响主流程
+            get_logger(__name__).debug("set_window_state(%s) 失败: %s", state, exc)
