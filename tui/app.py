@@ -178,6 +178,7 @@ class XiumiAgentApp(App):
             self.ctx = AppContext(self.config, self.bus)
             self.ctx.cdp = self.browser.cdp
             self.ctx.tab = await self.browser.get_or_create_tab("xiumi.us", "https://xiumi.us/")
+            await self.browser.set_window_state(self.ctx.tab, "minimized")  # 启动即后台（--start-minimized 对 Edge 不总生效）
             await self.plugins.load_all(self.ctx)
             self.actions = self.plugins.actions
         except Exception as e:
