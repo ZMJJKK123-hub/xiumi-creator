@@ -1,8 +1,4 @@
-"""主应用薄壳：布局组装、事件接线、快捷键与任务调度。
-
-Rule2 §1 表现层壳：启动编排在 tui.boot，命令分发在 tui.commands，
-样式在 tui.theme，输入历史与 spinner 各自独立成模块。
-"""
+"""主应用薄壳：布局组装与事件接线（boot/commands/theme/history/spinner 各自独立成模块）。"""
 from __future__ import annotations
 
 import asyncio  # _set_window 的异步任务派发
