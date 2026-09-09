@@ -1,4 +1,4 @@
-"""模态屏：登录选择（扫码/账密）、账密输入、短信验证码补输。"""
+"""模态屏：登录（终端内账密登录）、账密输入、短信验证码补输。"""
 from __future__ import annotations
 
 from textual.app import ComposeResult
@@ -8,29 +8,26 @@ from textual.widgets import Button, Input, Label, Static
 
 
 class LoginScreen(ModalScreen[bool]):
-    """登录方式选择：扫码（弹二维码图片）或账号密码。"""
+    """登录屏：账号密码在终端内完成，浏览器后台运行（滑块验证时自动弹出）。"""
 
     BINDINGS = [("escape", "skip", "跳过登录")]
 
     def compose(self) -> ComposeResult:
         with Vertical(id="login-box"):
             yield Label("尚未登录秀米", classes="login-title")
-            yield Label("选择登录方式（登录一次后长期保留）：", classes="login-sub")
-            yield Button("微信扫码登录", id="btn-qr", variant="default")
+            yield Label("账号密码登录，全程在终端内完成（浏览器后台运行）：", classes="login-sub")
             yield Button("账号密码登录", id="btn-pwd", variant="default")
             yield Button("跳过（稍后再说）", id="btn-skip", variant="default")
             yield Static("", id="login-status")
 
     def on_mount(self) -> None:
         app = self.app
-        app.bus.on("qr_ready", self._on_qr)
         app.bus.on("login_result", self._on_result)
         app.bus.on("sms_required", self._on_sms)
         app.bus.on("captcha_required", self._on_captcha)
 
     def on_unmount(self) -> None:
         app = self.app
-        app.bus.off("qr_ready", self._on_qr)
         app.bus.off("login_result", self._on_result)
         app.bus.off("sms_required", self._on_sms)
         app.bus.off("captcha_required", self._on_captcha)
@@ -48,14 +45,9 @@ class LoginScreen(ModalScreen[bool]):
             b.disabled = False
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        app = self.app
-        if event.button.id == "btn-qr":
+        if event.button.id == "btn-pwd":
             self._disable()
-            self._status("正在获取二维码…")
-            app.run_worker(app.actions["xiumi_login.qr"](app.ctx), exclusive=False)
-        elif event.button.id == "btn-pwd":
-            self._disable()
-            app.push_screen(PasswordScreen())
+            self.app.push_screen(PasswordScreen())
         else:
             self.dismiss(False)
 
@@ -63,14 +55,11 @@ class LoginScreen(ModalScreen[bool]):
         self.dismiss(False)
 
     # ---- 事件 ----
-    def _on_qr(self, _type: str, data: dict) -> None:
-        self._status(f"二维码已弹出系统看图器，请用微信扫码。\n文件: {data['path']}")
-
     def _on_sms(self, _type: str, data: dict) -> None:
         self._status("页面要求短信验证码，请稍后在弹出的输入框填写…")
 
     def _on_captcha(self, _type: str, data: dict) -> None:
-        self._status("🧩 浏览器里弹出了滑块验证码：请到 Edge 窗口手动拖动完成验证，完成后这里会自动继续…")
+        self._status("🧩 需要滑块验证：浏览器窗口已自动弹出，请拖动完成后自动继续…")
 
     def _on_result(self, _type: str, data: dict) -> None:
         if data.get("ok"):

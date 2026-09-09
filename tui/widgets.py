@@ -35,7 +35,7 @@ MASCOT_ART: list[str] | None = None
 CHANGELOG = [
     "· Claude Code 风格界面：欢迎面板 / └ 流水 / spinner",
     "· 后台浏览器工具箱 browser_open/browser_close（background 参数）",
-    "· 双模式登录：微信扫码弹图 / 账密代填",
+    "· 终端内账密登录：浏览器后台运行，任务时自动弹出",
 ]
 
 TIPS = [

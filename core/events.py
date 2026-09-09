@@ -6,7 +6,6 @@
   action        {name, args}              工具调用开始（进入动作面板）
   tool_result   {name, result}            工具调用结束
   screenshot    {path}                    产生截图文件
-  qr_ready      {path}                    登录二维码已保存
   sms_required  {}                        账密登录遇验证码，需要用户补输
   login_result  {ok, message}             登录轮询结果
   task_done     {ok, message}             一轮任务结束

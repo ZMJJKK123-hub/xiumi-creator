@@ -43,6 +43,7 @@ class EdgeBrowser:
             "--disable-session-crashed-bubble",
             "--hide-crash-restore-bubble",
             "--restore-last-session=false",
+            "--start-minimized",  # 后台运行：窗口最小化到任务栏，需要时再调出
             start_url,
         ]
         self._proc = subprocess.Popen(args, creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
@@ -140,3 +141,22 @@ class EdgeBrowser:
         if self.cdp:
             await self.cdp.close()
             self.cdp = None
+
+    # ---- 窗口可见性 ----
+    async def set_window_state(self, tab, state: str) -> None:
+        """控制自动化 Edge 主窗口：'minimized'（后台）| 'normal'（前台可见）。
+
+        登录/待命时最小化不打扰用户；任务运行或需要人工滑块时调出。
+        """
+        if not self.cdp or not tab:
+            return
+        try:
+            res = await self.cdp.send(
+                "Browser.getWindowForTarget", {"targetId": tab.target_info.get("targetId")}
+            )
+            await self.cdp.send(
+                "Browser.setWindowBounds",
+                {"windowId": res["windowId"], "bounds": {"windowState": state}},
+            )
+        except Exception:
+            pass  # 窗口控制失败不影响主流程

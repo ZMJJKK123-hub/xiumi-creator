@@ -4,9 +4,11 @@
 A 欢迎头部卡片（橙色圆角、双栏）  B 交互流水（用户命令条 + └ 树）
 C 底部输入框（上下 ─ 细线包裹 `> ` 提示行）  D 状态栏（左：随状态切换提示 / 右：系统状态与诊断）
 spinner：帧序列 · ✢ ✳ ✶ ✻ ✽ + 动名词 + (Ns)，下方 └ Tip 提示
+浏览器可见性：登录/待命后台最小化；任务运行与滑块验证时自动弹出。
 """
 from __future__ import annotations
 
+import asyncio
 import time
 from pathlib import Path
 
@@ -207,6 +209,13 @@ class XiumiAgentApp(App):
         self.bus.on("status", lambda et, d: self.set_status(d["text"]))
         self.bus.on("screenshot", lambda et, d: t.write_tool_note(f"截图: {d['path']}"))
         self.bus.on("error", lambda et, d: t.write_system("⚠ " + d["message"]))
+        self.bus.on("captcha_required", lambda et, d: self._set_window("normal"))  # 滑块需人工，弹出浏览器
+
+        def _login_done(et: str, d: dict) -> None:
+            if d.get("ok"):
+                self._set_window("minimized")  # 登录完成收回后台
+
+        self.bus.on("login_result", _login_done)
 
         def _done(et: str, d: dict) -> None:
             self._set_busy(False)
@@ -223,6 +232,20 @@ class XiumiAgentApp(App):
         else:
             t.write_system(text)
 
+    # ---- 浏览器可见性调度（后台运行，必要时弹出）----
+    def _set_window(self, state: str) -> None:
+        async def _go() -> None:
+            try:
+                if self.browser and self.ctx and self.ctx.tab:
+                    await self.browser.set_window_state(self.ctx.tab, state)
+            except Exception:
+                pass
+
+        try:
+            asyncio.get_running_loop().create_task(_go())
+        except RuntimeError:
+            pass
+
     # ---- D 状态栏 ----
     def set_status(self, text: str, error: bool = False) -> None:
         self.query_one("#info", Static).update(Text(text, style=f"bold {RED}" if error else f"dim {GRAY}"))
@@ -234,6 +257,8 @@ class XiumiAgentApp(App):
         )
         if not busy:
             self.query_one("#spinner", Static).update("")
+        # 任务运行时弹出浏览器供观看，结束后收回后台
+        self._set_window("normal" if busy else "minimized")
 
     # ---- spinner（· Infusing... (35s) + └ Tip）----
     def _tick_spinner(self) -> None:

@@ -1,5 +1,5 @@
 {
-  "_comment": "已通过 scripts/recon.py 实地踩点确认（2026-09-06）。若秀米改版，重跑 recon 更新。",
+  "_comment": "已通过 scripts/recon.py 实地踩点确认（2026-09-06）。若秀米改版，重跑 recon 更新。二维码登录已移除。",
   "home_url": "https://xiumi.us/",
   "auth_url": "https://xiumi.us/auth",
   "account_input": "input[placeholder='请输入邮箱或手机号码']",
@@ -7,10 +7,7 @@
   "agreement_checkbox": "input[type='checkbox']",
   "submit_button": "button.login-button",
   "submit_text": "登录",
-  "wechat_link_selector": "a[href='javascript:void(0)']",
-  "wechat_link_index": 0,
-  "qr_selector": ".impowerBox img, img[src*='qrcode'], img[src*='qr'], .qrcode img",
   "captcha_iframe": "#tcaptcha_iframe_dy",
-  "sms_input": "input[placeholder*='验证码']",
+  "sms_input": "input[placeholder*='验证码'], input[placeholder*='code']",
   "check_js": ""
 }

@@ -1,11 +1,11 @@
-"""xiumi_login 插件：登录态检查 + 两种登录动作（供 TUI 直接调用，凭据不经过 LLM）。
+"""xiumi_login 插件：登录态检查 + 账密登录（供 TUI 直接调用，凭据不经过 LLM）。
 
-- 动作 xiumi_login.qr       扫码登录：点微信图标 → 新标签页截二维码 → 弹出图片 → 轮询登录态
-- 动作 xiumi_login.password  账密登录：TUI 模态框收集账号密码 → 代填页面（含协议勾选）→ 提交；
-                               若出现滑块验证码/短信验证码，通知用户在浏览器里人工辅助
+- 动作 xiumi_login.password  账密登录：TUI 模态框收集账号密码 → 后台代填页面（含协议勾选）→ 提交；
+                               出现滑块验证码时浏览器窗口自动弹出供人工完成（发 captcha_required 事件），
+                               短信验证码在 TUI 补输（sms_required 事件）
 - 工具 xiumi_login_check     供 LLM 查询登录态（只读）
 
-选择器已实地踩点确认（见同目录 selectors.json）。
+选择器已实地踩点确认（见同目录 selectors.json）。二维码登录已按需求移除。
 """
 from __future__ import annotations
 
@@ -83,77 +83,6 @@ async def _wait_login(ctx: AppContext, timeout: float) -> bool:
             pass  # 页面正在跳转时 evaluate 可能失败，继续轮询
         await asyncio.sleep(2.0)
     return False
-
-
-async def _qr_login(ctx: AppContext) -> None:
-    """扫码登录：点微信图标（可能新开标签页），截二维码弹图，轮询直到登录成功。"""
-    sel = _selectors()
-    tab = ctx.require_tab()
-    await tab.navigate(sel["auth_url"])
-
-    # 点击微信登录图标（wechat-chapter 下第一个 void(0) 图标链接，按 微信/QQ/微博 顺序）
-    links = await tab.agent("find", sel["wechat_link_selector"], 10)
-    links = [d for d in links if d.get("tag") == "a"]
-    if not links:
-        await ctx.events.emit("login_result", ok=False, message="找不到微信登录图标，请手动在浏览器里点击微信登录后，我方会自动检测")
-    else:
-        await tab.agent("click", links[sel.get("wechat_link_index", 0)]["ref"])
-        await asyncio.sleep(2.5)
-
-    # 二维码可能在：新标签页（微信 OAuth 窗口）或当前页弹出层
-    qr_tab = await _find_qr_tab(ctx)
-    target = qr_tab or tab
-    qr_path = ctx.config.screenshots_dir / "login_qr.png"
-    ok_shot = False
-    if qr_tab is not None:
-        for selector in [s.strip() for s in sel["qr_selector"].split(",") if s.strip()]:
-            try:
-                if await qr_tab.wait_selector(selector, timeout=4):
-                    await qr_tab.screenshot(path=qr_path, selector=selector)
-                    ok_shot = True
-                    break
-            except Exception:
-                continue
-    if not ok_shot:
-        try:
-            await target.screenshot(path=qr_path)  # 兜底整页截图，人眼找码
-            ok_shot = True
-        except Exception:
-            pass
-    if ok_shot:
-        await ctx.events.emit("qr_ready", path=str(qr_path))
-        try:
-            os.startfile(str(qr_path))
-        except Exception:
-            pass
-    else:
-        await ctx.events.emit("login_result", ok=False, message="二维码截图失败，请在浏览器窗口里直接扫码")
-        return
-
-    ok = await _wait_login(ctx, timeout=240)
-    ctx.state["xiumi_logged_in"] = ok
-    if ok:
-        await ctx.events.emit("login_result", ok=True, message="扫码登录成功")
-    else:
-        await ctx.events.emit("login_result", ok=False, message="等待扫码超时（4 分钟），可重试或改用账号密码")
-
-
-async def _find_qr_tab(ctx: AppContext) -> Tab | None:
-    """微信 OAuth 点击后若弹出了新标签页（open.weixin.qq.com 等），attach 并返回。"""
-    if not ctx.cdp:
-        return None
-    try:
-        pages = await ctx.cdp.list_pages()
-    except Exception:
-        return None
-    for p in pages:
-        url = p.get("url", "")
-        if any(kw in url for kw in ("open.weixin.qq.com", "graph.qq.com", "api.weibo.com")):
-            session_id = await ctx.cdp.attach(p["targetId"])
-            qr_tab = Tab(ctx.cdp, session_id, p)
-            await qr_tab.enable()
-            return qr_tab
-    return None
 
 
 async def _fill_input(tab: Tab, css: str, value: str, label: str) -> None:
@@ -256,11 +185,10 @@ async def _tool_login_check(ctx: AppContext, args: dict) -> str:
 
 class XiumiLoginPlugin(Plugin):
     name = "xiumi_login"
-    description = "秀米登录：登录态检查工具 + 扫码/账密登录动作（动作由 TUI 调用，凭据不进 LLM）"
+    description = "秀米登录：登录态检查工具 + 账密登录动作（终端内完成，凭据不进 LLM）"
 
     def actions(self, ctx: AppContext) -> dict:
         return {
-            "xiumi_login.qr": _qr_login,
             "xiumi_login.password": _password_login,
             "xiumi_login.check": lambda: check_login(ctx),
             "xiumi_login.sms_code": lambda code: _notify_sms_code(ctx, code),
