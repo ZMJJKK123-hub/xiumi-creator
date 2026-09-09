@@ -24,7 +24,7 @@ from core.config import Config, XIUMI_HOME, load_config
 from core.events import EventBus
 from core.llm import LLMClient
 from core.registry import AppContext, PluginManager, ToolRegistry
-from tui.screens import LoginScreen
+from tui.screens import PasswordScreen
 from tui.widgets import ACCENT, GRAY, RED, TaskInput, Transcript
 
 # 插件目录取自已安装的 plugins 包（dev 与 pip 安装模式都正确）
@@ -50,14 +50,14 @@ class HelpScreen(ModalScreen[None]):
         content = Text()
         content.append("快捷键 / 命令\n\n", style=f"bold {ACCENT}")
         rows = [
-            ("?        ", "打开本帮助（任意键关闭）"),
+            ("?        ", "帮助，任意键关闭"),
             ("esc      ", "中断当前任务"),
             ("↑ / ↓    ", "翻阅输入历史"),
-            ("PgUp/PgDn", "翻看历史消息（鼠标已禁用）"),
+            ("PgUp/PgDn", "翻看历史消息"),
             ("ctrl+l   ", "清屏"),
             ("ctrl+q   ", "退出"),
-            ("/model 名称", "配置/切换模型（写入 .env）"),
-            ("/file 路径", "载入任务文件（支持 [img:路径] 标记）"),
+            ("/model 名称", "设置模型"),
+            ("/file 路径", "载入任务文件，支持 [img:路径]"),
             ("/login   ", "打开登录窗口"),
             ("/shot    ", "截取当前页面"),
         ]
@@ -91,7 +91,7 @@ class XiumiAgentApp(App):
     #hint {{ width: auto; height: 1; color: {GRAY}; }}
     #info {{ width: 1fr; height: 1; overflow: hidden; text-align: right; color: {GRAY}; }}
     #help-box {{ border: round {ACCENT}; background: #161616; padding: 1 2; margin: 4 12; width: 76; }}
-    LoginScreen, PasswordScreen {{ align: center middle; }}
+    PasswordScreen {{ align: center middle; }}
     #login-box, #pwd-box {{ width: 64; height: auto; border: round #4a4a52; background: #161616; padding: 1 2; }}
     #login-box Button, #pwd-box Button {{
         width: 100%; margin-bottom: 1; background: #1f1f1f; color: #e8e8e8;
@@ -185,7 +185,7 @@ class XiumiAgentApp(App):
             cwd=self._welcome_cwd(),
         )
         if not self.config.llm_ready:
-            self._chat("system", "⚠ 未配置 LLM（.env 缺少 OPENAI_API_KEY）。浏览器与登录功能可用，但无法执行任务。")
+            self._chat("system", "⚠ 未配置 API Key，编辑 .env 后重启。当前可登录和截图，不能执行任务。")
         self.set_status("启动 Edge…")
         try:
             self.browser = EdgeBrowser(self.config)
@@ -212,9 +212,10 @@ class XiumiAgentApp(App):
         except Exception:
             logged_in = False
         if not logged_in:
-            self.push_screen(LoginScreen())
+            self.set_status("未登录")
+            self._chat("system", "未登录：/login 登录 · /model 配置模型")
         else:
-            self.set_status(f"{self.config.model} · 秀米已登录")
+            self.set_status(f"{self._welcome_model()} · 秀米已登录")
             self._chat("system", "✻ 就绪，输入任务开始。")
 
     # ---- 事件总线 → 流水 ----
@@ -306,7 +307,7 @@ class XiumiAgentApp(App):
 
         if raw == "/login":
             if self.actions:
-                self.push_screen(LoginScreen())
+                self.push_screen(PasswordScreen())
             else:
                 self._chat("system", "插件尚未就绪，稍等片刻再试")
             return
@@ -314,10 +315,10 @@ class XiumiAgentApp(App):
             parts = raw.split(maxsplit=1)
             if len(parts) < 2 or not parts[1].strip():
                 current = self.config.model if self.config else "?"
-                key_state = "已配置" if (self.config and self.config.llm_ready) else "未配置（API Key 缺失）"
+                key_state = "已配置" if (self.config and self.config.llm_ready) else "未配置"
                 self._chat(
                     "system",
-                    f"当前模型: {current}（{key_state}）\n用法: /model <模型名>，例如 /model glm-4.6\n设置后立即生效，并写入 .env 持久保存",
+                    f"当前模型: {current}，{key_state}\n用法: /model 模型名，如 /model glm-4.6",
                 )
                 return
             name = parts[1].strip()
@@ -335,8 +336,8 @@ class XiumiAgentApp(App):
             elif self.config and self.config.llm_ready and self.ctx:
                 self.agent = Agent(self.ctx, self.registry, LLMClient(self.config), self.bus)
             self.set_status(f"{self._welcome_model()} · {len(self.registry.names())} tools" if self.config else "")
-            extra = f"（已写入 {env_path}）" if env_path else ""
-            self._chat("system", f"模型已切换为 {name}{extra}。输入任务即可使用。")
+            extra = f"，已写入 {env_path}" if env_path else ""
+            self._chat("system", f"模型已切换为 {name}{extra}")
             return
         if raw in ("/help", "?"):
             self.push_screen(HelpScreen())

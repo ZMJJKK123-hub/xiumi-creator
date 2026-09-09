@@ -33,15 +33,15 @@ VERSION = "v0.1.1"
 MASCOT_ART: list[str] | None = None
 
 QUICKREF = [
-    "/model <名称>  配置模型（如 /model glm-4.6）",
-    "/file <路径>   载入 Markdown 任务",
-    "/login         登录秀米",
-    "/shot          截图当前页面",
-    "?             快捷键帮助",
-    "esc           中断当前任务",
-    "↑ / ↓         翻阅输入历史",
-    "PgUp / PgDn   翻看历史消息",
-    "ctrl+q        退出",
+    "/model 名称   设置模型",
+    "/file 路径    载入任务文件",
+    "/login        登录",
+    "/shot         截图",
+    "?            帮助",
+    "esc          中断任务",
+    "↑ ↓          输入历史",
+    "PgUp PgDn    翻看消息",
+    "ctrl+q       退出",
 ]
 
 # 只有列间竖线（row.cross=│），无外框无横线的 box —— 欢迎卡双栏之间的暗橙分隔线
@@ -152,8 +152,8 @@ class Transcript(RichLog):
                 Align.center(Text(f"模型: {model}", style=GRAY)),
                 Align.center(Text(cwd, style=f"dim {GRAY}", overflow="fold")),
                 Text(),
-                Text("· 输入任务直接开始", style="white"),
-                Text("· /model 配置模型 · ? 快捷键", style="white"),
+                Text("· 输入任务回车开始", style="white"),
+                Text("· ? 查看帮助", style="white"),
             )
             self.write(Panel(content, title=title, title_align="left", border_style=ACCENT, padding=(0, 1)))
             self.write("")
