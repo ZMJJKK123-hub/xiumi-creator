@@ -40,8 +40,6 @@ def main() -> None:
     finally:
         # 兜底恢复终端：TUI 异常退出时鼠标追踪等模式可能未复位，
         # 会导致鼠标移动刷出 [N;x;yM 转义码；此处统一关闭
-        import sys
-
         try:
             sys.stdout.write("\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l\x1b[?1015l\x1b[?25h\x1b[0m")
             sys.stdout.flush()
