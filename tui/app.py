@@ -171,7 +171,7 @@ class XiumiAgentApp(App):
         self.set_status("启动 Edge…")
         try:
             self.browser = EdgeBrowser(self.config)
-            await self.browser.ensure_started()
+            await self.browser.ensure_started(start_url="https://xiumi.us/")
             await self.browser.connect()
             self.ctx = AppContext(self.config, self.bus)
             self.ctx.cdp = self.browser.cdp

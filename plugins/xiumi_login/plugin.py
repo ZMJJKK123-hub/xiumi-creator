@@ -24,8 +24,31 @@ def _selectors() -> dict:
     return json.loads((HERE / "selectors.json").read_text(encoding="utf-8"))
 
 
+async def _wait_rendered(tab, timeout: float = 8.0) -> bool:
+    """等 SPA 渲染出实际内容（body 文本 > 30 字符）。
+
+    在空白/加载中的页面上跑登录启发式会把空文本误判为「已登录」，
+    必须先等到页面真正渲染。
+    """
+    import asyncio
+
+    deadline = asyncio.get_event_loop().time() + timeout
+    while asyncio.get_event_loop().time() < deadline:
+        try:
+            n = await tab.evaluate("(document.body && document.body.innerText || '').trim().length")
+        except Exception:
+            n = 0
+        if n and int(n) > 30:
+            return True
+        await asyncio.sleep(0.4)
+    return False
+
+
 async def check_login(ctx: AppContext, navigate: bool = True) -> bool:
-    """登录态检查：优先 selectors.json 的 check_js，否则看页面是否还有「登录」入口。"""
+    """登录态检查：先等页面渲染，再按启发式判断（check_js 优先）。
+
+    页面始终渲染不出来时按「未登录」处理（安全默认，会弹登录窗）。
+    """
     tab = ctx.require_tab()
     sel = _selectors()
     url = await tab.current_url()
@@ -34,13 +57,16 @@ async def check_login(ctx: AppContext, navigate: bool = True) -> bool:
         url = await tab.current_url()
     if "xiumi.us" not in url:
         return False
+    if not await _wait_rendered(tab):
+        ctx.state["xiumi_logged_in"] = False
+        return False
     if sel.get("check_js"):
         logged_in = bool(await tab.evaluate(sel["check_js"]))
     else:
         # 启发式：未登录时页面显著位置有「登录」字样（首页/登录页标题都会出现）
         res = await tab.evaluate(
-            "(function(){var t=(document.body.innerText||'').slice(0,3000);"
-            "return /登\\s*录|立即登录/.test(t);})()"
+            r"(function(){var t=(document.body.innerText||'').slice(0,3000);"
+            r"return /登\s*录|立即登录/.test(t);})()"
         )
         logged_in = not res
     ctx.state["xiumi_logged_in"] = logged_in
