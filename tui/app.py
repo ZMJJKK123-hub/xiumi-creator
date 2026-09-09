@@ -128,7 +128,11 @@ class XiumiAgentApp(ShortcutActions, App):
 
     # ---- 用户输入 ----
     async def on_input_submitted(self, event: Input.Submitted) -> None:
-        """提交处理：回显命令条 → 命令路由 → 未消费则作为任务执行。"""
+        """提交处理：模态屏激活时不处理（防模态输入冒泡成任务/凭据泄露）；
+        主屏则回显命令条 → 命令路由 → 未消费则作为任务执行。"""
+        if len(self.screen_stack) > 1:
+            event.stop()
+            return
         raw = event.value.strip()
         if not raw:
             event.input.value = ""

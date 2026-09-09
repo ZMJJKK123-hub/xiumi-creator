@@ -56,6 +56,31 @@ class PasswordScreen(ModalScreen[bool]):
         """
         self.query_one("#pwd-status", Static).update(text)
 
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        """输入框内 Enter：账号框跳密码框，密码框直接提交登录。
+
+        必须 stop 阻止冒泡——否则事件会到达主 App 的任务处理器，
+        把输入框内容当作任务文本发给 LLM（凭据泄露）。
+        Args: event 输入提交事件。Returns: None。
+        """
+        event.stop()
+        if event.input.id == "acc":
+            self.query_one("#pwd", Input).focus()
+            return
+        if event.input.id == "pwd":
+            self._submit_login()
+
+    def _submit_login(self) -> None:
+        """校验并提交账号密码（空字段拦截）。"""
+        app = self.app
+        acc = self.query_one("#acc", Input).value.strip()
+        pwd = self.query_one("#pwd", Input).value
+        if not acc or not pwd:
+            self._status("请填写账号和密码")
+            return
+        self._status("提交中")
+        app.run_worker(app.actions["xiumi_login.password"](app.ctx, acc, pwd), exclusive=False)
+
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """按钮分发：登录提交 / 验证码提交 / 返回。
 
@@ -63,13 +88,7 @@ class PasswordScreen(ModalScreen[bool]):
         """
         app = self.app
         if event.button.id == "btn-login":
-            acc = self.query_one("#acc", Input).value.strip()
-            pwd = self.query_one("#pwd", Input).value
-            if not acc or not pwd:
-                self._status("请填写账号和密码")
-                return
-            self._status("提交中")
-            app.run_worker(app.actions["xiumi_login.password"](app.ctx, acc, pwd), exclusive=False)
+            self._submit_login()
         elif event.button.id == "btn-sms":
             sms = self.query_one("#sms", Input).value.strip()
             if not sms:
