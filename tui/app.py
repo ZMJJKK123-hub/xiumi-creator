@@ -53,6 +53,7 @@ class HelpScreen(ModalScreen[None]):
             ("?        ", "打开本帮助（任意键关闭）"),
             ("esc      ", "中断当前任务"),
             ("↑ / ↓    ", "翻阅输入历史"),
+            ("PgUp/PgDn", "翻看历史消息（鼠标已禁用）"),
             ("ctrl+l   ", "清屏"),
             ("ctrl+q   ", "退出"),
             ("/model 名称", "配置/切换模型（写入 .env）"),
@@ -114,7 +115,21 @@ class XiumiAgentApp(App):
         ("question_mark", "help", "帮助"),
         ("up", "history_prev", "上一条输入"),
         ("down", "history_next", "下一条输入"),
+        ("pageup", "scroll_transcript_up", "上翻消息"),
+        ("pagedown", "scroll_transcript_down", "下翻消息"),
     ]
+
+    def action_scroll_transcript_up(self) -> None:
+        try:
+            self.query_one("#transcript", Transcript).scroll_page_up()
+        except Exception:
+            pass
+
+    def action_scroll_transcript_down(self) -> None:
+        try:
+            self.query_one("#transcript", Transcript).scroll_page_down()
+        except Exception:
+            pass
 
     def __init__(self) -> None:
         super().__init__()
