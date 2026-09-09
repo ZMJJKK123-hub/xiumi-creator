@@ -55,6 +55,7 @@ class HelpScreen(ModalScreen[None]):
             ("↑ / ↓    ", "翻阅输入历史"),
             ("ctrl+l   ", "清屏"),
             ("ctrl+q   ", "退出"),
+            ("/model 名称", "配置/切换模型（写入 .env）"),
             ("/file 路径", "载入任务文件（支持 [img:路径] 标记）"),
             ("/login   ", "打开登录窗口"),
             ("/shot    ", "截取当前页面"),
@@ -294,6 +295,34 @@ class XiumiAgentApp(App):
             else:
                 self._chat("system", "插件尚未就绪，稍等片刻再试")
             return
+        if raw.startswith("/model"):
+            parts = raw.split(maxsplit=1)
+            if len(parts) < 2 or not parts[1].strip():
+                current = self.config.model if self.config else "?"
+                key_state = "已配置" if (self.config and self.config.llm_ready) else "未配置（API Key 缺失）"
+                self._chat(
+                    "system",
+                    f"当前模型: {current}（{key_state}）\n用法: /model <模型名>，例如 /model glm-4.6\n设置后立即生效，并写入 .env 持久保存",
+                )
+                return
+            name = parts[1].strip()
+            from core.config import persist_env
+
+            try:
+                env_path = persist_env("MODEL", name)
+            except Exception as e:
+                self._chat("system", f"⚠ 模型已切换但写入 .env 失败: {e}")
+                env_path = None
+            if self.config:
+                self.config.model = name
+            if self.agent is not None:
+                self.agent.llm = LLMClient(self.config)
+            elif self.config and self.config.llm_ready and self.ctx:
+                self.agent = Agent(self.ctx, self.registry, LLMClient(self.config), self.bus)
+            self.set_status(f"{self._welcome_model()} · {len(self.registry.names())} tools" if self.config else "")
+            extra = f"（已写入 {env_path}）" if env_path else ""
+            self._chat("system", f"模型已切换为 {name}{extra}。输入任务即可使用。")
+            return
         if raw in ("/help", "?"):
             self.push_screen(HelpScreen())
             return
@@ -360,10 +389,10 @@ class XiumiAgentApp(App):
         self.push_screen(HelpScreen())
 
     def _welcome_model(self) -> str:
-        """欢迎卡元信息的模型文案（首启/清屏保持一致）。"""
+        """欢迎卡/状态栏的模型文案：只有 key 配好才显示模型名，否则提示用 /model 配置。"""
         if self.config and self.config.llm_ready:
             return self.config.model
-        return "未配置"
+        return "未配置（/model 设置）"
 
     def _welcome_cwd(self) -> str:
         """工作目录显示（用户主目录缩写为 ~，避免长路径难看地折行）。"""

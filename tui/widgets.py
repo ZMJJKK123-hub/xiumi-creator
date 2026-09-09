@@ -32,16 +32,15 @@ VERSION = "v0.1.1"
 # mascot 像素图案预留位：等图案定稿后填入（每行一个字符串，可用 █▄ 块字符），自动以主色渲染
 MASCOT_ART: list[str] | None = None
 
-CHANGELOG = [
-    "· Claude Code 风格界面：欢迎面板 / └ 流水 / spinner",
-    "· 后台浏览器工具箱 browser_open/browser_close（background 参数）",
-    "· 终端内账密登录：浏览器后台运行，任务时自动弹出",
-]
-
-TIPS = [
-    "· 直接输入任务，例如：写一篇秋天咖啡店探店推文，主色暖棕",
-    "· /file 路径 载入 Markdown 任务，支持 [img:路径] 插图标记",
-    "· ? 查看快捷键 · esc 中断任务 · ↑↓ 翻阅输入历史",
+QUICKREF = [
+    "/model <名称>  配置模型（如 /model glm-4.6）",
+    "/file <路径>   载入 Markdown 任务",
+    "/login         登录秀米",
+    "/shot          截图当前页面",
+    "?             快捷键帮助",
+    "esc           中断当前任务",
+    "↑ / ↓         翻阅输入历史",
+    "ctrl+q        退出",
 ]
 
 # 只有列间竖线（row.cross=│），无外框无横线的 box —— 欢迎卡双栏之间的暗橙分隔线
@@ -149,11 +148,11 @@ class Transcript(RichLog):
             content = Group(
                 Text("Welcome back!", style="bold white", justify="center"),
                 Text(),
-                Align.center(Text(f"{model} · API 按量计费", style=GRAY)),
+                Align.center(Text(f"模型: {model}", style=GRAY)),
                 Align.center(Text(cwd, style=f"dim {GRAY}", overflow="fold")),
                 Text(),
-                Text("· 直接输入任务开始", style="white"),
-                Text(f"· ? 快捷键 · esc 中断", style="white"),
+                Text("· 输入任务直接开始", style="white"),
+                Text("· /model 配置模型 · ? 快捷键", style="white"),
             )
             self.write(Panel(content, title=title, title_align="left", border_style=ACCENT, padding=(0, 1)))
             self.write("")
@@ -165,7 +164,7 @@ class Transcript(RichLog):
         else:
             left_lines += [Text() for _ in range(4)]  # 图案预留位（空行）
         left_lines += [
-            Align.center(Text(f"{model} · API 按量计费", style=GRAY)),
+            Align.center(Text(f"模型: {model}", style=GRAY)),
             Align.center(Text(cwd, style=f"dim {GRAY}", overflow="fold")),  # 折行显示完整路径
         ]
         left = Group(*left_lines)
@@ -173,12 +172,9 @@ class Transcript(RichLog):
         # 右栏实际内容宽（卡片总宽 - 边框/内边距/左栏 45%），据此折行避免错乱
         tips_width = max(int((self._w() - 8) * 0.55) - 2, 24)
         right = Group(
-            Text("Tips for getting started", style=f"bold {ACCENT}"),
-            *_hanging_bullets(TIPS, tips_width),
-            Rule(style=GRAY),
-            Text("What's new", style=f"bold {ACCENT}"),
-            *_hanging_bullets(CHANGELOG, tips_width),
-            Text("详见 README.md", style=f"italic {GRAY}"),
+            Text("命令与快捷键", style=f"bold {ACCENT}"),
+            *_hanging_bullets(QUICKREF, tips_width),
+            Text("输入任务回车即可开始", style=f"italic {GRAY}"),
         )
 
         grid = Table(box=INNER_DIVIDER, show_header=False, show_edge=False, expand=True, border_style=DIM_ACCENT)

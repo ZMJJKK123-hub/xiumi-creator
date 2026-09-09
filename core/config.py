@@ -77,6 +77,31 @@ class Config:
         return bool(self.api_key) and bool(self.base_url)
 
 
+def persist_env(key: str, value: str) -> Path:
+    """把单个配置项写回生效中的 .env（不存在则先落模板）。返回 env 文件路径。"""
+    env_file = XIUMI_HOME / ".env"
+    if not env_file.exists() and IS_DEV:
+        legacy = PROJECT_ROOT / ".env"
+        if legacy.exists():
+            env_file = legacy
+    if not env_file.exists():
+        env_file.parent.mkdir(parents=True, exist_ok=True)
+        env_file.write_text(ENV_TEMPLATE, encoding="utf-8")
+    lines = env_file.read_text(encoding="utf-8").splitlines()
+    out: list[str] = []
+    hit = False
+    for ln in lines:
+        if ln.startswith(f"{key}="):
+            out.append(f"{key}={value}")
+            hit = True
+        else:
+            out.append(ln)
+    if not hit:
+        out.append(f"{key}={value}")
+    env_file.write_text("\n".join(out) + "\n", encoding="utf-8")
+    return env_file
+
+
 def load_config() -> Config:
     # .env 发现顺序：数据目录 → （dev 模式）项目根
     env_file = XIUMI_HOME / ".env"
