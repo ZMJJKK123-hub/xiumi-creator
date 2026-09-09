@@ -57,6 +57,12 @@ async def check_login(ctx: AppContext, navigate: bool = True) -> bool:
         url = await tab.current_url()
     if "xiumi.us" not in url:
         return False
+    # 停在 /auth 任何子页 = 未登录的铁证（登录成功会跳走）；
+    # 其子页（如 auth/email/login 验证码页）按钮是「获取验证码」而非「登录」，
+    # 文本启发式在那里会误判为已登录
+    if "/auth" in url:
+        ctx.state["xiumi_logged_in"] = False
+        return False
     if not await _wait_rendered(tab):
         ctx.state["xiumi_logged_in"] = False
         return False
