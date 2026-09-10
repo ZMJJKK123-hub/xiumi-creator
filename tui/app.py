@@ -75,7 +75,6 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
         self._worker = None
         self._task_started = 0.0
 
-    # ---- 布局 ----
     def compose(self) -> ComposeResult:
         """布局：流水 / spinner / 候选面板 / 输入框 / 状态栏。"""
         yield Transcript(id="transcript")
@@ -107,7 +106,6 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
         except asyncio.CancelledError:
             self.logger.info("boot 被取消")
 
-    # ---- 事件总线 → 流水 ----
     def _wire_events(self) -> None:
         """订阅系统事件并映射到流水/状态栏/浏览器窗口。"""
         bus, t = self.bus, self.transcript()
