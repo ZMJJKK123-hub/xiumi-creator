@@ -27,9 +27,10 @@ _EDGE_CANDIDATES = [
 
 ENV_TEMPLATE = """# xiumi-agent 配置（首次运行自动生成，编辑后重启生效）
 # ===== LLM (OpenAI 兼容接口) =====
+# 模型由 /model 命令设置，或在此填写
 OPENAI_BASE_URL=https://open.bigmodel.cn/api/paas/v4
 OPENAI_API_KEY=
-MODEL=glm-4.6
+MODEL=
 
 # ===== 浏览器 =====
 # 留空则自动探测常见 Edge 安装路径
@@ -74,7 +75,8 @@ class Config:
 
     @property
     def llm_ready(self) -> bool:
-        return bool(self.api_key) and bool(self.base_url)
+        """key、接口地址、模型名三者齐备才算就绪（模型由 /model 设置，无默认值）。"""
+        return bool(self.api_key) and bool(self.base_url) and bool(self.model)
 
 
 def persist_env(key: str, value: str) -> Path:
@@ -118,7 +120,7 @@ def load_config() -> Config:
     cfg = Config(
         base_url=os.getenv("OPENAI_BASE_URL", "https://open.bigmodel.cn/api/paas/v4"),
         api_key=os.getenv("OPENAI_API_KEY", ""),
-        model=os.getenv("MODEL", "glm-4.6"),
+        model=os.getenv("MODEL", ""),
         edge_path=detect_edge(),
         cdp_port=int(os.getenv("CDP_PORT", "9222")),
         profile_dir=XIUMI_HOME / ".edge-profile",

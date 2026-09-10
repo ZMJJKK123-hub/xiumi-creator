@@ -71,7 +71,7 @@ class PasswordScreen(ModalScreen[bool]):
             self._submit_login()
 
     def _submit_login(self) -> None:
-        """校验并提交账号密码（空字段拦截）。"""
+        """校验并提交账号密码；登录 worker 的异常转为屏内提示，不让应用崩溃。"""
         app = self.app
         acc = self.query_one("#acc", Input).value.strip()
         pwd = self.query_one("#pwd", Input).value
@@ -79,7 +79,17 @@ class PasswordScreen(ModalScreen[bool]):
             self._status("请填写账号和密码")
             return
         self._status("提交中")
-        app.run_worker(app.actions["xiumi_login.password"](app.ctx, acc, pwd), exclusive=False)
+
+        async def _run_login() -> None:
+            """登录 worker 包装：捕获异常显示在状态行。"""
+            try:
+                await app.actions["xiumi_login.password"](app.ctx, acc, pwd)
+            except Exception as exc:  # noqa: BLE001 登录失败必须可见且不崩应用
+                self._status(f"登录失败: {exc}")
+            else:
+                self._status("登录流程结束")
+
+        app.run_worker(_run_login(), exclusive=False)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """按钮分发：登录提交 / 验证码提交 / 返回。

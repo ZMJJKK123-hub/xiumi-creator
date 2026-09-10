@@ -7,7 +7,8 @@
 """
 from __future__ import annotations
 
-import sys
+import sys  # 命令行参数与终端重置
+from pathlib import Path  # 探针写日志  # 命令行参数与退出终端重置
 
 
 def _reset_terminal() -> None:
@@ -57,9 +58,21 @@ def main() -> None:
     from tui.app import XiumiAgentApp
 
     try:
+        # faulthandler：原生层崩溃（段错误等无 stderr 的静默死亡）时留全套栈转储
+        import faulthandler
+
+        from core.config import XIUMI_HOME
+
+        dump = XIUMI_HOME / "logs" / "faulthandler.log"
+        dump.parent.mkdir(parents=True, exist_ok=True)
+        faulthandler.enable(open(dump, "w", encoding="utf-8"), all_threads=True)
         # mouse 保持默认启用：用户需要鼠标点击与滚轮；异常退出遗留的鼠标上报
         # 模式由 _reset_terminal 兜底复位
         XiumiAgentApp().run()
+        # 诊断探针：正常退出也留痕（区分自然退出/被外部终止/崩溃）
+        Path(XIUMI_HOME / "logs" / "exit_trace.txt").write_text(
+            f"TUI run() 正常返回 at {__import__('time').strftime('%H:%M:%S')}", encoding="utf-8"
+        )
     except KeyboardInterrupt:
         pass
     finally:

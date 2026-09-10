@@ -93,12 +93,21 @@ async def _wait_login(ctx: AppContext, timeout: float) -> bool:
     return False
 
 
-async def _fill_input(tab: Tab, css: str, value: str, label: str) -> None:
-    found = await tab.agent("find", css, 5)
-    if not found:
-        raise RuntimeError(f"找不到{label}输入框（选择器: {css}）——页面结构可能变了，请重跑 recon")
-    await tab.agent("click", found[0]["ref"])
-    await tab.agent("type", found[0]["ref"], value)
+async def _fill_input(tab: Tab, css: str, value: str, label: str, timeout: float = 15.0) -> None:
+    """等待输入框渲染出现（SPA 异步渲染）后点击并填值。
+
+    Args: tab 页面标签; css 选择器; value 填入值; label 中文名（报错用）; timeout 最长等待秒。
+    Raises: RuntimeError 超时未找到。
+    """
+    deadline = asyncio.get_event_loop().time() + timeout
+    while asyncio.get_event_loop().time() < deadline:
+        found = await tab.agent("find", css, 5)
+        if found:
+            await tab.agent("click", found[0]["ref"])
+            await tab.agent("type", found[0]["ref"], value)
+            return
+        await asyncio.sleep(0.5)
+    raise RuntimeError(f"找不到{label}输入框（选择器: {css}）——页面结构可能变了，请重跑 recon")
 
 
 async def _ensure_agreement(tab: Tab, css: str) -> bool:
@@ -117,19 +126,22 @@ async def _ensure_agreement(tab: Tab, css: str) -> bool:
     return state != "missing"
 
 
-async def _click_login_button(tab: Tab, sel: dict) -> bool:
-    """定位并点击登录提交按钮。
+async def _click_login_button(tab: Tab, sel: dict, timeout: float = 10.0) -> bool:
+    """定位并点击登录提交按钮（等待按钮渲染出现）。
 
-    Args: tab 页面标签; sel 选择器集。Returns: 是否成功点击。
+    Args: tab 页面标签; sel 选择器集; timeout 最长等待秒。Returns: 是否成功点击。
     """
-    btns = await tab.agent("find", sel["submit_button"], 3)
-    if not btns:
-        btns = await tab.agent("findByText", sel["submit_text"], "button", 3)
-    if not btns:
-        return False
-    await tab.agent("click", btns[0]["ref"])
-    await asyncio.sleep(2.0)
-    return True
+    deadline = asyncio.get_event_loop().time() + timeout
+    while asyncio.get_event_loop().time() < deadline:
+        btns = await tab.agent("find", sel["submit_button"], 3)
+        if not btns:
+            btns = await tab.agent("findByText", sel["submit_text"], "button", 3)
+        if btns:
+            await tab.agent("click", btns[0]["ref"])
+            await asyncio.sleep(2.0)
+            return True
+        await asyncio.sleep(0.5)
+    return False
 
 
 async def _notify_captcha_if_visible(tab: Tab, ctx: AppContext, css: str) -> None:

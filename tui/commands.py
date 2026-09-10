@@ -48,7 +48,7 @@ async def _cmd_model(app: Any, raw: str) -> bool:
     if len(parts) < 2 or not parts[1].strip():
         current = app.config.model if app.config else "?"
         key_state = "已配置" if (app.config and app.config.llm_ready) else "未配置"
-        app._chat("system", f"当前模型: {current}，{key_state}。用法: /model 模型名，如 /model glm-4.6")
+        app._chat("system", f"当前模型: {current}，{key_state}。用法: /model 模型名")
         return True
     name = parts[1].strip()
     try:
