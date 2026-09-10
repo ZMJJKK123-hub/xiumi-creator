@@ -224,13 +224,38 @@ class XiumiAgentApp(ShortcutActions, App):
     def apply_model(self, name: str) -> None:
         """应用模型切换：更新配置并按需重建/新建 Agent。"""
         self.config.model = name
+        self._refresh_agent()
+
+    def apply_llm_config(self, api_key: str | None = None, base_url: str | None = None) -> None:
+        """应用 Key/接口地址变更：更新配置并按需重建/新建 Agent。
+
+        Args: api_key 新密钥（None 不变）; base_url 新地址（None 不变）。
+        """
+        if api_key is not None:
+            self.config.api_key = api_key
+        if base_url is not None:
+            self.config.base_url = base_url
+        self._refresh_agent()
+
+    def _refresh_agent(self) -> None:
+        """按当前配置刷新 LLM 客户端：就绪则重建，未就绪提示补齐项。"""
         if self.agent is not None:
             self.agent.llm = LLMClient(self.config)
         elif self.config.llm_ready and self.ctx.tab:
             from core.agent import Agent  # 局部导入：避免模块级循环依赖
 
             self.agent = Agent(self.ctx, self.registry, LLMClient(self.config), self.bus)
-        self.set_status(f"{self._welcome_model()} · {len(self.registry.names())} tools")
+        if self.config.llm_ready:
+            self.set_status(f"{self.config.model} · {len(self.registry.names())} tools")
+        else:
+            missing = []
+            if not self.config.api_key:
+                missing.append("/key")
+            if not self.config.base_url:
+                missing.append("/url")
+            if not self.config.model:
+                missing.append("/model")
+            self.set_status("未配置 " + " ".join(missing))
 
     def _welcome_model(self) -> str:
         """模型显示文案：key 未配好时提示未配置。"""

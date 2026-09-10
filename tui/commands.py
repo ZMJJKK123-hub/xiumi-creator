@@ -62,6 +62,62 @@ async def _cmd_model(app: Any, raw: str) -> bool:
     return True
 
 
+def _masked(value: str) -> str:
+    """凭据脱敏显示：仅保留首尾各 4 字符。
+
+    Args: value 原始凭据。Returns: 脱敏文本，短值全掩码。
+    """
+    if len(value) <= 8:
+        return "****"
+    return f"{value[:4]}****{value[-4:]}"
+
+
+async def _cmd_key(app: Any, raw: str) -> bool:
+    """/key：设置 API Key（立即生效并写入 .env，输入会脱敏回显）。
+
+    Args: app 宿主; raw 原始输入（含 key 参数）。Returns: 恒 True。
+    Calls: persist_env / app.apply_llm_config。
+    """
+    parts = raw.split(maxsplit=1)
+    if len(parts) < 2 or not parts[1].strip():
+        current = app.config.api_key if app.config else ""
+        shown = f"{_masked(current)}" if current else "未设置"
+        app._chat("system", f"当前 Key: {shown}\n用法: /key 你的API密钥")
+        return True
+    key = parts[1].strip()
+    try:
+        persist_env("OPENAI_API_KEY", key)
+    except Exception as exc:  # noqa: BLE001
+        app.logger.warning("persist_env 失败: %s", exc)
+    app.apply_llm_config(api_key=key)
+    app._chat("system", f"Key 已设置 {_masked(key)}，立即生效")
+    return True
+
+
+async def _cmd_url(app: Any, raw: str) -> bool:
+    """/url：设置 API 接口地址（OpenAI 兼容，立即生效并写入 .env）。
+
+    Args: app 宿主; raw 原始输入（含地址参数）。Returns: 恒 True。
+    Calls: persist_env / app.apply_llm_config。
+    """
+    parts = raw.split(maxsplit=1)
+    if len(parts) < 2 or not parts[1].strip():
+        current = app.config.base_url if app.config else ""
+        app._chat("system", f"当前地址: {current or '未设置'}\n用法: /url 接口地址，如 /url https://api.deepseek.com")
+        return True
+    url = parts[1].strip().rstrip("/")
+    if not url.startswith(("http://", "https://")):
+        app._chat("system", "地址需以 http:// 或 https:// 开头")
+        return True
+    try:
+        persist_env("OPENAI_BASE_URL", url)
+    except Exception as exc:  # noqa: BLE001
+        app.logger.warning("persist_env 失败: %s", exc)
+    app.apply_llm_config(base_url=url)
+    app._chat("system", f"接口地址已设置为 {url}")
+    return True
+
+
 async def _cmd_shot(app: Any, raw: str) -> bool:
     """/shot：截取当前页面到 screenshots 目录。
 
@@ -108,6 +164,8 @@ class CommandRouter:
             "/login": _cmd_login,
             "/help": _cmd_help,
             "/model": _cmd_model,
+            "/key": _cmd_key,
+            "/url": _cmd_url,
             "/shot": _cmd_shot,
             "/file": _cmd_file,
         }
