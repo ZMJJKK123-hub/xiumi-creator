@@ -7,9 +7,6 @@ from __future__ import annotations
 from pathlib import Path  # /file 的路径校验
 from typing import Any, Awaitable, Callable  # 处理器与宿主类型标注
 
-from core.agent import Agent  # /model 触发 Agent 的 LLM 客户端重建
-from core.config import persist_env  # /model 持久化模型到 .env
-from core.llm import LLMClient  # /model 重建 LLM 客户端
 from tui.screens import PasswordScreen  # /login 打开账密屏
 
 # 命令处理器签名：接收宿主 App 与用户输入原文，返回是否已消费
@@ -39,83 +36,17 @@ async def _cmd_help(app: Any, raw: str) -> bool:
 
 
 async def _cmd_model(app: Any, raw: str) -> bool:
-    """/model：查看或切换模型；切换即重建 LLM 客户端并写入 .env。
+    """/model：打开模型配置屏（模型名、API Key、接口地址同屏填写保存）。
 
-    Args: app 宿主; raw 原始输入（可带模型名参数）。Returns: 恒 True。
-    Calls: persist_env / LLMClient / Agent / app.apply_model。
+    Args: app 宿主; raw 原始输入（参数被忽略，统一走配置屏）。Returns: 恒 True。
+    Calls: app.push_screen(ModelConfigScreen)。
     """
-    parts = raw.split(maxsplit=1)
-    if len(parts) < 2 or not parts[1].strip():
-        current = app.config.model if app.config else "?"
-        key_state = "已配置" if (app.config and app.config.llm_ready) else "未配置"
-        app._chat("system", f"当前模型: {current}，{key_state}。用法: /model 模型名")
-        return True
-    name = parts[1].strip()
-    try:
-        env_path = persist_env("MODEL", name)
-        extra = f"，已写入 {env_path}"
-    except Exception as exc:  # noqa: BLE001 写配置失败不阻断会话内切换
-        extra = f"，写入 .env 失败: {exc}"
-        app.logger.warning("persist_env 失败: %s", exc)
-    app.apply_model(name)
-    app._chat("system", f"模型已切换为 {name}{extra}")
+    from tui.screens import ModelConfigScreen  # 局部导入：避免循环依赖
+
+    app.push_screen(ModelConfigScreen())
     return True
 
 
-def _masked(value: str) -> str:
-    """凭据脱敏显示：仅保留首尾各 4 字符。
-
-    Args: value 原始凭据。Returns: 脱敏文本，短值全掩码。
-    """
-    if len(value) <= 8:
-        return "****"
-    return f"{value[:4]}****{value[-4:]}"
-
-
-async def _cmd_key(app: Any, raw: str) -> bool:
-    """/key：设置 API Key（立即生效并写入 .env，输入会脱敏回显）。
-
-    Args: app 宿主; raw 原始输入（含 key 参数）。Returns: 恒 True。
-    Calls: persist_env / app.apply_llm_config。
-    """
-    parts = raw.split(maxsplit=1)
-    if len(parts) < 2 or not parts[1].strip():
-        current = app.config.api_key if app.config else ""
-        shown = f"{_masked(current)}" if current else "未设置"
-        app._chat("system", f"当前 Key: {shown}\n用法: /key 你的API密钥")
-        return True
-    key = parts[1].strip()
-    try:
-        persist_env("OPENAI_API_KEY", key)
-    except Exception as exc:  # noqa: BLE001
-        app.logger.warning("persist_env 失败: %s", exc)
-    app.apply_llm_config(api_key=key)
-    app._chat("system", f"Key 已设置 {_masked(key)}，立即生效")
-    return True
-
-
-async def _cmd_url(app: Any, raw: str) -> bool:
-    """/url：设置 API 接口地址（OpenAI 兼容，立即生效并写入 .env）。
-
-    Args: app 宿主; raw 原始输入（含地址参数）。Returns: 恒 True。
-    Calls: persist_env / app.apply_llm_config。
-    """
-    parts = raw.split(maxsplit=1)
-    if len(parts) < 2 or not parts[1].strip():
-        current = app.config.base_url if app.config else ""
-        app._chat("system", f"当前地址: {current or '未设置'}\n用法: /url 接口地址，如 /url https://api.deepseek.com")
-        return True
-    url = parts[1].strip().rstrip("/")
-    if not url.startswith(("http://", "https://")):
-        app._chat("system", "地址需以 http:// 或 https:// 开头")
-        return True
-    try:
-        persist_env("OPENAI_BASE_URL", url)
-    except Exception as exc:  # noqa: BLE001
-        app.logger.warning("persist_env 失败: %s", exc)
-    app.apply_llm_config(base_url=url)
-    app._chat("system", f"接口地址已设置为 {url}")
-    return True
 
 
 async def _cmd_shot(app: Any, raw: str) -> bool:
@@ -164,8 +95,6 @@ class CommandRouter:
             "/login": _cmd_login,
             "/help": _cmd_help,
             "/model": _cmd_model,
-            "/key": _cmd_key,
-            "/url": _cmd_url,
             "/shot": _cmd_shot,
             "/file": _cmd_file,
         }

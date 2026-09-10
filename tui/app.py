@@ -1,4 +1,4 @@
-"""主应用薄壳：布局组装与事件接线（boot/commands/theme/history/spinner 各自独立成模块）。"""
+"""主应用薄壳：布局组装与事件接线（boot/commands/theme/spinner 各自独立成模块）。"""
 from __future__ import annotations
 
 import asyncio  # _set_window 的异步任务派发
@@ -20,11 +20,10 @@ from core.registry import AppContext, PluginManager, ToolRegistry  # 插件体�
 from tui.actions import ShortcutActions  # 快捷键动作 Mixin
 from tui.boot import boot, make_login_result_minimizer  # 启动编排
 from tui.commands import CommandRouter  # 斜杠命令路由
-from tui.history import InputHistory  # 输入历史
 from tui.screens import HelpScreen  # 帮助浮层（PasswordScreen 由命令层打开）
 from tui.spinner import SpinnerState  # spinner 状态机
 from tui.theme import ACCENT, APP_CSS, GRAY, RED  # 主题常量与全局 CSS
-from tui.widgets import TaskInput, Transcript  # 输入框与流水
+from tui.widgets import Transcript  # 流水（输入框用通用 Input）
 from tui.window import WindowScheduler  # 浏览器窗口显隐
 
 # 插件目录：从已安装包定位
@@ -37,7 +36,7 @@ class XiumiAgentApp(ShortcutActions, App):
     类职责：组装布局与模态屏、把事件总线映射到流水、调度任务与快捷键。
     类变量：CSS（theme.APP_CSS）、BINDINGS（键位表）。
     实例：bus 总线、registry/plugins 工具体系、browser/ctx 浏览器上下文、
-    agent 任务循环、commands 命令路由、history 输入历史、spinner 状态机、log 日志。
+    agent 任务循环、commands 命令路由、spinner 状态机、log 日志。
     生命周期：on_mount 聚焦输入框并启动 boot worker → 交互 → ctrl+q 退出。
     """
 
@@ -48,9 +47,6 @@ class XiumiAgentApp(ShortcutActions, App):
         ("ctrl+q", "quit", "退出"),
         ("ctrl+l", "clear_logs", "清屏"),
         ("escape", "interrupt", "中断任务"),
-        ("question_mark", "help", "帮助"),
-        ("up", "history_prev", "上一条输入"),
-        ("down", "history_next", "下一条输入"),
         ("pageup", "scroll_transcript_up", "上翻消息"),
         ("pagedown", "scroll_transcript_down", "下翻消息"),
     ]
@@ -67,7 +63,6 @@ class XiumiAgentApp(ShortcutActions, App):
         self.agent = None
         self.actions: dict = {}
         self.commands = CommandRouter()
-        self.history = InputHistory()
         self.spinner = SpinnerState()
         self._window = WindowScheduler(self)
         self.logger = get_logger("app")
@@ -84,7 +79,7 @@ class XiumiAgentApp(ShortcutActions, App):
         yield Rule(id="rule-top")
         with Horizontal(id="input-box"):
             yield Static("> ", id="prompt-sym")
-            yield TaskInput(placeholder='Try "写一篇秋天咖啡店探店推文"', id="task")
+            yield Input(placeholder='Try "写一篇秋天咖啡店探店推文"', id="task")
         yield Rule(id="rule-bot")
         yield Horizontal(
             Static("? 快捷键 · ↑↓ 历史", id="hint"),
@@ -95,7 +90,7 @@ class XiumiAgentApp(ShortcutActions, App):
     def on_mount(self) -> None:
         """挂载：聚焦输入框、接线事件、启动 boot。"""
         self._wire_events()
-        self.query_one("#task", TaskInput).focus()
+        self.query_one("#task", Input).focus()
         self.set_interval(0.12, self._tick_spinner)
         self.run_worker(self._boot_task(), thread=False)
 
@@ -138,7 +133,6 @@ class XiumiAgentApp(ShortcutActions, App):
             event.input.value = ""
             return
         event.input.value = ""
-        self.history.record(raw)
         self.transcript().write_user(raw)
         if await self.commands.dispatch(self, raw):
             return

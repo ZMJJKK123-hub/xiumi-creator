@@ -17,15 +17,13 @@ from tui.theme import ACCENT, DIM_ACCENT, GRAY, VERSION  # 主题色与版本号
 
 # 命令速查表：欢迎卡右栏条目
 QUICKREF = [
-    "/model 名称   设置模型",
-    "/file 路径    载入任务文件",
-    "/login        登录",
-    "/shot         截图",
-    "?            帮助",
-    "esc          中断任务",
-    "↑ ↓          输入历史",
-    "PgUp PgDn    翻看消息",
-    "ctrl+q       退出",
+    "/model    配置模型、Key、地址",
+    "/file 路径 载入任务",
+    "/login    登录",
+    "/shot     截图",
+    "/help     帮助",
+    "esc       中断任务",
+    "ctrl+q    退出",
 ]
 
 # mascot 像素图案预留位：图案定稿后填入字符串列表，以主色渲染
@@ -59,8 +57,7 @@ def _compact_card(model: str, cwd: str, width: int) -> Panel:
         Align.center(Text(f"模型: {model}", style=GRAY)),
         Align.center(Text(cwd, style=f"dim {GRAY}", overflow="fold")),
         Text(),
-        Text("· 输入任务回车开始", style="white"),
-        Text("· ? 查看帮助", style="white"),
+        Text("· /help 查看帮助", style="white"),
     )
     return Panel(content, title=_build_title(), title_align="left", border_style=ACCENT, padding=(0, 1))
 
@@ -88,7 +85,6 @@ def build_welcome(model: str, cwd: str, width: int) -> Panel:
     right = Group(
         Text("命令与快捷键", style=f"bold {ACCENT}"),
         *hanging_bullets(QUICKREF, ref_width),
-        Text("输入任务回车即可开始", style=f"italic {GRAY}"),
     )
 
     grid = Table(box=_INNER_DIVIDER, show_header=False, show_edge=False, expand=True, border_style=DIM_ACCENT)

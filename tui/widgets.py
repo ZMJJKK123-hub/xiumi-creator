@@ -6,31 +6,12 @@ Rule2 §1 表现层组件；颜色常量在 theme，纯算法在 textutils，
 from __future__ import annotations
 
 from rich.text import Text  # 富文本行，流水各元素的载体
-from textual import events  # 按键事件类型，用于 ? 快捷键拦截
-from textual.widgets import Input, RichLog  # 输入框与滚动日志基类
+from textual.widgets import RichLog  # 滚动日志基类（输入框已移至通用 Input）
 
 from tui.textutils import fold_multiline, truncate_cells  # 折行与显示宽度截断
 from tui.theme import GRAY, RED, USER_BAR_BG  # 主题常量
 from tui.welcome import build_welcome  # 欢迎卡构建（双栏/简版）
 
-
-class TaskInput(Input):
-    """任务输入框：输入为空时按 ? 打开帮助，非空时 ? 为普通字符。
-
-    类变量：无。实例状态继承 Input。
-    生命周期：compose 时创建，焦点常驻；? 拦截走 MRO 双派发机制，
-    非 ? 按键交由 Input 基类 _on_key 处理（勿调 super 避免协程泄漏）。
-    """
-
-    def _on_key(self, event: events.Key) -> None:
-        """按键拦截：空输入的 question_mark 打开帮助并阻止输入。
-
-        Args: event 按键事件。Returns: None。Calls: app.open_help。
-        """
-        if event.key == "question_mark" and not self.value.strip():
-            event.stop()
-            event.prevent_default()
-            self.app.open_help()
 
 
 class Transcript(RichLog):

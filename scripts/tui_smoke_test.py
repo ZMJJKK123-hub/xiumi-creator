@@ -7,12 +7,13 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from tui.app import XiumiAgentApp
-from tui.widgets import TaskInput, Transcript
+from textual.widgets import Input  # 通用输入框
+from tui.widgets import Transcript
 
 
 async def type_input(app: XiumiAgentApp, pilot, text: str) -> None:
     await pilot.click("#task")
-    inp = app.query_one("#task", TaskInput)
+    inp = app.query_one("#task", Input)
     inp.value = ""
     for ch in text:
         await pilot.press(ch)

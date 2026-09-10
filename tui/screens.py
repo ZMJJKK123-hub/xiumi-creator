@@ -136,24 +136,117 @@ class HelpScreen(ModalScreen[None]):
     def compose(self) -> ComposeResult:
         """布局：橙标题 + 键位两列文本。"""
         rows = [
-            ("?        ", "帮助，任意键关闭"),
-            ("esc      ", "中断当前任务"),
-            ("↑ / ↓    ", "翻阅输入历史"),
-            ("PgUp/PgDn", "翻看历史消息"),
-            ("ctrl+l   ", "清屏"),
-            ("ctrl+q   ", "退出"),
-            ("/model 名称", "设置模型"),
+            ("/model", "配置模型、API Key、接口地址"),
             ("/file 路径", "载入任务文件，支持 [img:路径]"),
-            ("/login   ", "登录"),
-            ("/shot    ", "截图"),
+            ("/login", "登录秀米"),
+            ("/shot", "截图"),
+            ("/help", "帮助，任意键关闭"),
+            ("esc", "中断任务"),
+            ("PgUp/PgDn", "翻看消息"),
+            ("ctrl+l", "清屏"),
+            ("ctrl+q", "退出"),
         ]
         content = Text()
-        content.append("快捷键 / 命令\n\n", style=f"bold {ACCENT}")
+        content.append("命令 / 快捷键\n\n", style=f"bold {ACCENT}")
         for key, desc in rows:
-            content.append(f"{key}  ", style=f"bold {ACCENT}")
+            content.append(f"{key:<10}", style=f"bold {ACCENT}")
             content.append(desc + "\n", style=GRAY)
         yield Static(content, id="help-box")
 
     def on_key(self, event) -> None:
         """任意键关闭浮层。Args: event 按键事件。"""
         self.dismiss(None)
+
+
+class ModelConfigScreen(ModalScreen[bool]):
+    """模型配置屏：模型名、API Key、接口地址同屏填写并保存。
+
+    类职责：收集三项 LLM 配置，非空项写入 .env 并即时刷新 Agent。
+    实例：无自定义状态，提交时即取即用。
+    生命周期：/model 命令打开 → 保存 dismiss(True) 或取消 dismiss(False)。
+    """
+
+    def compose(self) -> ComposeResult:
+        """布局：标题 + 三输入框（模型/Key/URL）+ 保存取消按钮 + 状态行。"""
+        with Vertical(id="cfg-box"):
+            yield Label("模型配置", classes="login-title")
+            yield Label("Tab 切换，Enter 下一项", classes="login-sub")
+            yield Input(placeholder="模型名，如 deepseek-chat", id="cfg-model")
+            yield Input(placeholder="API Key", id="cfg-key", password=True)
+            yield Input(placeholder="接口地址，如 https://open.bigmodel.cn/api/paas/v4", id="cfg-url")
+            with Horizontal():
+                yield Button("保存", id="btn-save", variant="default")
+                yield Button("取消", id="btn-cancel", variant="default")
+            yield Static("", id="cfg-status")
+
+    def on_mount(self) -> None:
+        """挂载：聚焦模型框。"""
+        self.query_one("#cfg-model", Input).focus()
+
+    def _status(self, text: str) -> None:
+        """更新屏内状态行。Args: text 状态文案。Returns: None。"""
+        self.query_one("#cfg-status", Static).update(text)
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        """Enter 流转：模型→Key→URL→保存；stop 防冒泡成任务。
+
+        Args: event 输入提交事件。Returns: None。
+        """
+        event.stop()
+        order = ["cfg-model", "cfg-key", "cfg-url"]
+        if event.input.id not in order:
+            return
+        idx = order.index(event.input.id)
+        if idx < len(order) - 1:
+            self.query_one(f"#{order[idx + 1]}", Input).focus()
+        else:
+            self._save()
+
+    def _save(self) -> None:
+        """保存非空项到 .env 并刷新 Agent；全空时提示。
+
+        Globals Used: None。Calls: persist_env / app.apply_llm_config / app.apply_model。
+        """
+        from core.config import persist_env  # 局部导入：配置持久化
+
+        app = self.app
+        model = self.query_one("#cfg-model", Input).value.strip()
+        key = self.query_one("#cfg-key", Input).value.strip()
+        url = self.query_one("#cfg-url", Input).value.strip().rstrip("/")
+        saved: list[str] = []
+        try:
+            if model:
+                persist_env("MODEL", model)
+                saved.append("模型")
+            if key:
+                persist_env("OPENAI_API_KEY", key)
+                saved.append("Key")
+            if url:
+                if not url.startswith(("http://", "https://")):
+                    self._status("接口地址需以 http:// 或 https:// 开头")
+                    return
+                persist_env("OPENAI_BASE_URL", url)
+                saved.append("地址")
+        except Exception as exc:  # noqa: BLE001 保存失败必须可见
+            self._status(f"保存失败: {exc}")
+            return
+        if key:
+            app.apply_llm_config(api_key=key)
+        if url:
+            app.apply_llm_config(base_url=url)
+        if model:
+            app.apply_model(model)
+        else:
+            app._refresh_agent()
+        if not saved:
+            self._status("未填写任何项")
+            return
+        self._status("已保存：" + "、".join(saved))
+        self.dismiss(True)
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        """按钮分发：保存 / 取消。Args: event 按钮事件。"""
+        if event.button.id == "btn-save":
+            self._save()
+        else:
+            self.dismiss(False)

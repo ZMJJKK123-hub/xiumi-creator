@@ -1,11 +1,10 @@
 """快捷键动作：从 App 薄壳拆出的键位行为集合。
 
 Rule2 §3：Mixin 单一职责，app.py 只保留组装；宿主需提供
-transcript/history/_busy/_worker/_set_busy/open_help/_welcome_model/_welcome_cwd。
+transcript/_busy/_worker/_set_busy/open_help/_welcome_model/_welcome_cwd。
 """
 from __future__ import annotations
 
-from textual.widgets import Input  # 输入框类型标注
 
 
 class ShortcutActions:
@@ -32,18 +31,6 @@ class ShortcutActions:
         t = self.transcript()
         t.clear()
         t.write_welcome(self._welcome_model(), self._welcome_cwd())
-
-    def action_history_prev(self) -> None:
-        """↑：回溯上一条历史并回填输入框。"""
-        inp = self.query_one("#task", Input)
-        inp.value = self.history.prev(inp.value)
-        inp.cursor_position = len(inp.value)
-
-    def action_history_next(self) -> None:
-        """↓：回溯下一条历史，到底恢复草稿。"""
-        inp = self.query_one("#task", Input)
-        inp.value = self.history.next()
-        inp.cursor_position = len(inp.value)
 
     def action_scroll_transcript_up(self) -> None:
         """PgUp：流水上翻一页。"""

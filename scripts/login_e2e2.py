@@ -10,7 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from tui.app import XiumiAgentApp
-from tui.widgets import TaskInput
+from textual.widgets import Input
 
 
 async def main() -> None:
@@ -27,7 +27,7 @@ async def main() -> None:
                 break
 
         await pilot.click("#task")
-        inp = app.query_one("#task", TaskInput)
+        inp = app.query_one("#task", Input)
         inp.value = "/login"
         await pilot.press("enter")
         await pilot.pause(0.8)
