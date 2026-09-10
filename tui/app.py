@@ -236,8 +236,6 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
         """模型显示文案：未配好时提示未配置。"""
         return self.config.model if self.config.llm_ready else "未配置"
 
-    # LLM 配置应用见 tui.actions.LLMConfigActions（Mixin）
-
     def _welcome_cwd(self) -> str:
         """工作目录显示：主目录缩写为 ~。"""
         cwd = str(XIUMI_HOME)
