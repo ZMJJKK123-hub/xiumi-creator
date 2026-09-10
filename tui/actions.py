@@ -45,3 +45,42 @@ class ShortcutActions:
             self.transcript().scroll_page_down()
         except Exception as exc:  # noqa: BLE001
             self.logger.debug("scroll_down 失败: %s", exc)
+
+
+class LLMConfigActions:
+    """LLM 配置应用集合（Mixin）。
+
+    类职责：模型/Key/地址变更后即时刷新 LLM 客户端与状态栏。
+    宿主需提供：config、agent、ctx、registry、bus、set_status、logger。
+    """
+
+    def apply_model(self, name: str) -> None:
+        """应用模型名变更。Args: name 模型名。Calls: _refresh_agent。"""
+        self.config.model = name
+        self._refresh_agent()
+
+    def apply_llm_config(self, api_key: str | None = None, base_url: str | None = None) -> None:
+        """应用 Key/地址变更（None 项不变）。Args: api_key/base_url 新值。"""
+        if api_key is not None:
+            self.config.api_key = api_key
+        if base_url is not None:
+            self.config.base_url = base_url
+        self._refresh_agent()
+
+    def _refresh_agent(self) -> None:
+        """按当前配置刷新：就绪重建 LLM 客户端，未就绪提示缺项命令。"""
+        from core.llm import LLMClient  # 局部导入：避免模块级循环
+
+        if self.agent is not None:
+            self.agent.llm = LLMClient(self.config)
+        elif self.config.llm_ready and self.ctx.tab:
+            from core.agent import Agent  # 局部导入
+
+            self.agent = Agent(self.ctx, self.registry, LLMClient(self.config), self.bus)
+        if self.config.llm_ready:
+            self.set_status(f"{self.config.model} · {len(self.registry.names())} tools")
+            return
+        missing = [c for c, ok in (
+            ("/key", self.config.api_key), ("/url", self.config.base_url), ("/model", self.config.model),
+        ) if not ok]
+        self.set_status("未配置" + " ".join(missing) if missing else "就绪")

@@ -17,7 +17,7 @@ from core.events import Event, EventBus, EventType  # 强类型事件总线
 from core.llm import LLMClient  # OpenAI 兼容客户端（apply_model 重建用）
 from core.log import get_logger  # 统一日志
 from core.registry import AppContext, PluginManager, ToolRegistry  # 插件体系
-from tui.actions import ShortcutActions  # 快捷键动作 Mixin
+from tui.actions import LLMConfigActions, ShortcutActions  # 快捷键与 LLM 配置 Mixin
 from tui.boot import boot, make_login_result_minimizer  # 启动编排
 from tui.commands import CommandRouter  # 斜杠命令路由
 from tui.screens import HelpScreen  # 帮助浮层（PasswordScreen 由命令层打开）
@@ -30,7 +30,7 @@ from tui.window import WindowScheduler  # 浏览器窗口显隐
 PLUGINS_DIR = Path(_plugins_pkg.__file__).resolve().parent
 
 
-class XiumiAgentApp(ShortcutActions, App):
+class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
     """xiumi-agent 主应用。
 
     类职责：组装布局与模态屏、把事件总线映射到流水、调度任务与快捷键。
@@ -215,45 +215,7 @@ class XiumiAgentApp(ShortcutActions, App):
         """打开快捷键帮助浮层。"""
         self.push_screen(HelpScreen())
 
-    def apply_model(self, name: str) -> None:
-        """应用模型切换：更新配置并按需重建/新建 Agent。"""
-        self.config.model = name
-        self._refresh_agent()
-
-    def apply_llm_config(self, api_key: str | None = None, base_url: str | None = None) -> None:
-        """应用 Key/接口地址变更：更新配置并按需重建/新建 Agent。
-
-        Args: api_key 新密钥（None 不变）; base_url 新地址（None 不变）。
-        """
-        if api_key is not None:
-            self.config.api_key = api_key
-        if base_url is not None:
-            self.config.base_url = base_url
-        self._refresh_agent()
-
-    def _refresh_agent(self) -> None:
-        """按当前配置刷新 LLM 客户端：就绪则重建，未就绪提示补齐项。"""
-        if self.agent is not None:
-            self.agent.llm = LLMClient(self.config)
-        elif self.config.llm_ready and self.ctx.tab:
-            from core.agent import Agent  # 局部导入：避免模块级循环依赖
-
-            self.agent = Agent(self.ctx, self.registry, LLMClient(self.config), self.bus)
-        if self.config.llm_ready:
-            self.set_status(f"{self.config.model} · {len(self.registry.names())} tools")
-        else:
-            missing = []
-            if not self.config.api_key:
-                missing.append("/key")
-            if not self.config.base_url:
-                missing.append("/url")
-            if not self.config.model:
-                missing.append("/model")
-            self.set_status("未配置 " + " ".join(missing))
-
-    def _welcome_model(self) -> str:
-        """模型显示文案：key 未配好时提示未配置。"""
-        return self.config.model if self.config.llm_ready else "未配置"
+    # LLM 配置应用见 tui.actions.LLMConfigActions（Mixin）
 
     def _welcome_cwd(self) -> str:
         """工作目录显示：主目录缩写为 ~。"""

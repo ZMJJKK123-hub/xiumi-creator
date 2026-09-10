@@ -159,12 +159,7 @@ class HelpScreen(ModalScreen[None]):
 
 
 class ModelConfigScreen(ModalScreen[bool]):
-    """模型配置屏：模型名、API Key、接口地址同屏填写并保存。
-
-    类职责：收集三项 LLM 配置，非空项写入 .env 并即时刷新 Agent。
-    实例：无自定义状态，提交时即取即用。
-    生命周期：/model 命令打开 → 保存 dismiss(True) 或取消 dismiss(False)。
-    """
+    """模型配置屏：三项 LLM 配置同屏填写保存；/model 打开，保存/取消后 dismiss。"""
 
     def compose(self) -> ComposeResult:
         """布局：标题 + 三输入框（模型/Key/URL）+ 保存取消按钮 + 状态行。"""
@@ -203,10 +198,7 @@ class ModelConfigScreen(ModalScreen[bool]):
             self._save()
 
     def _save(self) -> None:
-        """保存非空项到 .env 并刷新 Agent；全空时提示。
-
-        Globals Used: None。Calls: persist_env / app.apply_llm_config / app.apply_model。
-        """
+        """保存非空项到 .env 并刷新 Agent。Calls: persist_env / apply_llm_config / apply_model。"""
         from core.config import persist_env  # 局部导入：配置持久化
 
         app = self.app
