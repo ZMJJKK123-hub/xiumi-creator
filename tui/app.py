@@ -215,6 +215,10 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
         """打开快捷键帮助浮层。"""
         self.push_screen(HelpScreen())
 
+    def _welcome_model(self) -> str:
+        """模型显示文案：未配好时提示未配置。"""
+        return self.config.model if self.config.llm_ready else "未配置"
+
     # LLM 配置应用见 tui.actions.LLMConfigActions（Mixin）
 
     def _welcome_cwd(self) -> str:
