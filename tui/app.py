@@ -31,7 +31,6 @@ from tui.window import WindowScheduler  # 浏览器窗口显隐
 # 插件目录：从已安装包定位
 PLUGINS_DIR = Path(_plugins_pkg.__file__).resolve().parent
 
-
 class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
     """xiumi-agent 主应用。
 
@@ -129,7 +128,7 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
 
     # ---- 用户输入 ----
     def on_input_changed(self, event: Input.Changed) -> None:
-        """输入变化：主输入框以 / 开头时刷新命令候选面板。"""
+        """输入变化：主输入框以 / 开头时刷新候选。"""
         if len(self.screen_stack) == 1 and event.input.id == "task":
             self.suggest.on_text(event.value)
 
