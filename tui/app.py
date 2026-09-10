@@ -78,7 +78,7 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
 
     # ---- 布局 ----
     def compose(self) -> ComposeResult:
-        """三区布局：流水 / spinner / 候选面板 / 输入框 / 状态栏。"""
+        """布局：流水 / spinner / 候选面板 / 输入框 / 状态栏。"""
         yield Transcript(id="transcript")
         yield Static("", id="spinner")
         yield Static("", id="suggest-box")
@@ -163,11 +163,11 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
             return False
         if not self.agent:
             self._chat("system", "⚠ LLM 未配置或未就绪，无法执行任务")
-            return False
-        if not self.ctx or not self.ctx.tab:
+        elif not (self.ctx and self.ctx.tab):
             self._chat("system", "⚠ 浏览器未就绪")
-            return False
-        return True
+        else:
+            return True
+        return False
 
     def _start_task(self, task_text: str) -> None:
         """进入忙碌态并启动任务 worker。"""
