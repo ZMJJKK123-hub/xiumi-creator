@@ -32,6 +32,20 @@ class ShortcutActions:
         t.clear()
         t.write_welcome(self._welcome_model(), self._welcome_cwd())
 
+    def action_suggest_next(self) -> None:
+        """Tab：候选打开时下一个候选，否则正常切换焦点。"""
+        if len(self.screen_stack) == 1 and self.suggest.is_open:
+            self.suggest.step(1)
+        else:
+            self.screen.focus_next()
+
+    def action_suggest_prev(self) -> None:
+        """Shift+Tab：候选打开时上一个候选，否则正常切换焦点。"""
+        if len(self.screen_stack) == 1 and self.suggest.is_open:
+            self.suggest.step(-1)
+        else:
+            self.screen.focus_previous()
+
     def action_scroll_transcript_up(self) -> None:
         """PgUp：流水上翻一页。"""
         try:

@@ -12,6 +12,15 @@ from tui.screens import PasswordScreen  # /login 打开账密屏
 # 命令处理器签名：接收宿主 App 与用户输入原文，返回是否已消费
 Handler = Callable[[Any, str], Awaitable[bool]]
 
+# 命令名到一句话描述：自动补全候选与帮助共用
+COMMAND_INFO = {
+    "/model": "配置模型、Key、地址",
+    "/file": "载入任务文件",
+    "/login": "登录秀米",
+    "/shot": "截图",
+    "/help": "帮助",
+}
+
 
 async def _cmd_login(app: Any, raw: str) -> bool:
     """/login：打开账密登录屏。
@@ -98,6 +107,11 @@ class CommandRouter:
             "/shot": _cmd_shot,
             "/file": _cmd_file,
         }
+
+    @property
+    def command_info(self) -> dict[str, str]:
+        """命令描述表（补全候选用）。Args: None。Returns: name->desc 字典。"""
+        return COMMAND_INFO
 
     def register(self, name: str, handler: Handler) -> None:
         """注册新命令（扩展点）。

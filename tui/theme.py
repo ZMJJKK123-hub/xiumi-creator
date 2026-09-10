@@ -27,6 +27,10 @@ Screen {{ background: {BG}; }}
     scrollbar-size: 1 1;
 }}
 #spinner {{ height: auto; padding: 0 1; }}
+#suggest-box {{
+    display: none; height: auto; margin: 0 1;
+    background: #101010; border: round {BORDER_MUTED}; padding: 0 1;
+}}
 #rule-top, #rule-bot {{ color: {GRAY}; margin: 0 1; }}
 #input-box {{ height: auto; padding: 0 1; }}
 #prompt-sym {{ width: auto; color: {GRAY}; padding: 0 0 0 1; }}

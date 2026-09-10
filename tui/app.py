@@ -7,6 +7,7 @@ from pathlib import Path  # 路径类型与插件目录定位
 
 import plugins as _plugins_pkg  # 已安装的插件包：定位插件目录（源码/安装两态一致）
 from rich.text import Text  # 状态栏富文本
+from textual.binding import Binding  # 带优先级的键位绑定（Tab 补全需越过 Screen 默认焦点切换）
 from textual.app import App, ComposeResult  # 应用基类与布局协议
 from textual.containers import Horizontal  # 输入框/状态栏横向容器
 from textual.widgets import Input, Rule, Static  # 基础组件
@@ -18,6 +19,7 @@ from core.llm import LLMClient  # OpenAI 兼容客户端（apply_model 重建用
 from core.log import get_logger  # 统一日志
 from core.registry import AppContext, PluginManager, ToolRegistry  # 插件体系
 from tui.actions import LLMConfigActions, ShortcutActions  # 快捷键与 LLM 配置 Mixin
+from tui.autocomplete import SuggestController  # 斜杠命令补全
 from tui.boot import boot, make_login_result_minimizer  # 启动编排
 from tui.commands import CommandRouter  # 斜杠命令路由
 from tui.screens import HelpScreen  # 帮助浮层（PasswordScreen 由命令层打开）
@@ -47,6 +49,8 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
         ("ctrl+q", "quit", "退出"),
         ("ctrl+l", "clear_logs", "清屏"),
         ("escape", "interrupt", "中断任务"),
+        Binding("tab", "suggest_next", "下一候选", priority=True),
+        Binding("shift+tab", "suggest_prev", "上一候选", priority=True),
         ("pageup", "scroll_transcript_up", "上翻消息"),
         ("pagedown", "scroll_transcript_down", "下翻消息"),
     ]
@@ -64,6 +68,7 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
         self.actions: dict = {}
         self.commands = CommandRouter()
         self.spinner = SpinnerState()
+        self.suggest = SuggestController(self)
         self._window = WindowScheduler(self)
         self.logger = get_logger("app")
         self._busy = False
@@ -73,9 +78,10 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
 
     # ---- 布局 ----
     def compose(self) -> ComposeResult:
-        """三区布局：流水 / spinner / 输入框 / 状态栏。"""
+        """三区布局：流水 / spinner / 候选面板 / 输入框 / 状态栏。"""
         yield Transcript(id="transcript")
         yield Static("", id="spinner")
+        yield Static("", id="suggest-box")
         yield Rule(id="rule-top")
         with Horizontal(id="input-box"):
             yield Static("> ", id="prompt-sym")
@@ -122,11 +128,22 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
         self.transcript().write_system(f"{mark} {event.message}")
 
     # ---- 用户输入 ----
+    def on_input_changed(self, event: Input.Changed) -> None:
+        """输入变化：主输入框以 / 开头时刷新命令候选面板。"""
+        if len(self.screen_stack) == 1 and event.input.id == "task":
+            self.suggest.on_text(event.value)
+
     async def on_input_submitted(self, event: Input.Submitted) -> None:
-        """提交处理：模态屏激活时不处理（防模态输入冒泡成任务/凭据泄露）；
-        主屏则回显命令条 → 命令路由 → 未消费则作为任务执行。"""
+        """提交处理：模态屏激活时不处理；候选打开时确定候选；
+        否则回显命令条 → 命令路由 → 未消费则作为任务执行。"""
         if len(self.screen_stack) > 1:
             event.stop()
+            return
+        decision = self.suggest.consume_submit()
+        if decision.consumed:
+            event.stop()
+            if decision.command:
+                await self.commands.dispatch(self, decision.command)
             return
         raw = event.value.strip()
         if not raw:
