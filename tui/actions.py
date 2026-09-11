@@ -22,10 +22,6 @@ class ShortcutActions:
             self._set_busy(False)
             self.transcript().write_system("⏹ 已中断（esc）")
 
-    def action_help(self) -> None:
-        """?：打开帮助浮层。"""
-        self.open_help()
-
     def action_clear_logs(self) -> None:
         """ctrl+l：清屏并重绘欢迎卡。"""
         t = self.transcript()
@@ -94,7 +90,5 @@ class LLMConfigActions:
         if self.config.llm_ready:
             self.set_status(f"{self.config.model} · {len(self.registry.names())} tools")
             return
-        missing = [c for c, ok in (
-            ("/key", self.config.api_key), ("/url", self.config.base_url), ("/model", self.config.model),
-        ) if not ok]
-        self.set_status("未配置" + " ".join(missing) if missing else "就绪")
+        if not self.config.llm_ready:
+            self.set_status("未配置，/model 设置")

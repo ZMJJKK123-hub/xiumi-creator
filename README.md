@@ -52,10 +52,13 @@ xiumi                       # 或 python main.py
 
 ```
 输入任务回车：写一篇秋天咖啡店探店推文，主色暖棕，结尾引导关注
+/model                      配置模型、API Key、接口地址（同屏填写保存）
 /file examples/task.md      载入文件任务（支持 [img:路径] 图片位置标记）
-/login                      重新打开登录窗口
+/login                      登录秀米
 /shot                       截图当前页面
-Ctrl+Q 退出 · Ctrl+L 清屏
+/help                       帮助
+输入 / 自动弹出命令候选，Tab 切换，Enter 确定
+esc 中断任务 · Ctrl+L 清屏 · Ctrl+Q 退出
 ```
 
 任务两种姿势：

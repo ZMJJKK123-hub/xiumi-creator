@@ -130,7 +130,7 @@ class HelpScreen(ModalScreen[None]):
     """快捷键帮助浮层：任意键关闭。
 
     类职责：展示键位与命令速查。
-    生命周期：? 或 /help 打开 → 任意键 dismiss(None)。
+    生命周期：/help 打开 → 任意键 dismiss(None)。
     """
 
     def compose(self) -> ComposeResult:

@@ -36,7 +36,7 @@ async def _cmd_login(app: Any, raw: str) -> bool:
 
 
 async def _cmd_help(app: Any, raw: str) -> bool:
-    """/help 或 ?：打开快捷键帮助浮层。
+    """/help：打开帮助浮层。
 
     Args: app 宿主; raw 原始输入。Returns: 恒 True。Calls: app.open_help。
     """
