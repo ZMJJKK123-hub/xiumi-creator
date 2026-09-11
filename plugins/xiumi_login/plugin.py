@@ -222,7 +222,7 @@ def _notify_sms_code(ctx: AppContext, code: str) -> None:
 
 async def _tool_login_check(ctx: AppContext, args: dict) -> str:
     ok = await check_login(ctx)
-    return "已登录" if ok else "未登录（需要用户在 TUI 界面完成登录，Agent 无法代劳扫码/输密码）"
+    return "已登录" if ok else "未登录，请提示用户输入 /login 命令完成登录"
 
 
 class XiumiLoginPlugin(Plugin):

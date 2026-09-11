@@ -31,14 +31,7 @@ async def boot(app: "XiumiAgentApp") -> None:
     setup_logging(XIUMI_HOME / "logs")
     app.transcript().write_welcome(app._welcome_model(), app._welcome_cwd())
     if not app.config.llm_ready:
-        missing = []
-        if not app.config.api_key:
-            missing.append("/key 设置密钥")
-        if not app.config.base_url:
-            missing.append("/url 设置接口地址")
-        if not app.config.model:
-            missing.append("/model 设置模型")
-        app._chat("system", "未配置：" + " · ".join(missing) + "。可登录和截图，不能执行任务。")
+        app._chat("system", "未配置，/model 设置模型与密钥。可登录和截图，不能执行任务。")
     if not await _start_browser(app):
         return
     _report_login_state(app, await _check_login(app))
