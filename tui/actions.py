@@ -16,11 +16,13 @@ class ShortcutActions:
     """
 
     def action_interrupt(self) -> None:
-        """esc：取消进行中的任务 worker。"""
-        if self._busy and self._worker is not None:
+        """esc：取消任务 worker；无 worker 的忙碌态（意外残留）也解除。"""
+        if not self._busy:
+            return
+        if self._worker is not None:
             self._worker.cancel()
-            self._set_busy(False)
-            self.transcript().write_system("⏹ 已中断（esc）")
+        self._set_busy(False)
+        self.transcript().write_system("⏹ 已中断（esc）")
 
     def action_clear_logs(self) -> None:
         """ctrl+l：清屏并重绘欢迎卡。"""

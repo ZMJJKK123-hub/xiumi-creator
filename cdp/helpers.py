@@ -126,7 +126,7 @@ class Tab:
                 raise CDPError(f"截图失败：找不到可见元素 {selector}")
             params["clip"] = {**rect, "scale": 1}
             params["captureBeyondViewport"] = True
-        res = await self.send("Page.captureScreenshot", params, timeout=60)
+        res = await self.send("Page.captureScreenshot", params, timeout=20)  # 快速失败：部分页面(如含滑块iframe)会挂起
         data = base64.b64decode(res["data"])
         if path is None:
             from core.config import PROJECT_ROOT
