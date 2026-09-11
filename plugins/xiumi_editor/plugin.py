@@ -34,7 +34,11 @@ async def _new_draft(ctx: AppContext, args: dict) -> str:
     url = await tab.current_url()
     if sel["editor_new_url"] not in url:
         await tab.navigate(sel["editor_new_url"])
-    ok = await tab.wait_selector('[contenteditable="true"]', timeout=15)
+    ok = await tab.wait_selector('[contenteditable="true"]', timeout=25)
+    if not ok:
+        # 编辑器首载偶发超时：重新导航一轮再等，仍无编辑区才判失败
+        await tab.navigate(sel["editor_new_url"])
+        ok = await tab.wait_selector('[contenteditable="true"]', timeout=20)
     if not ok:
         return (
             "ERROR: 编辑器页面未出现可编辑区域。可能原因：未登录 / 编辑器 URL 变化。"
