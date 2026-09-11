@@ -30,7 +30,7 @@ def svg_texts(svg: str) -> list[str]:
 async def main() -> None:
     from tui.app import XiumiAgentApp
     from textual.widgets import Input, Static
-    from tui.screens import HelpScreen, ModelConfigScreen, PasswordScreen
+    from tui.screens import HelpScreen, ModelConfigScreen
 
     app = XiumiAgentApp()
     async with app.run_test(size=(110, 32)) as pilot:
@@ -109,22 +109,13 @@ async def main() -> None:
               new_lines[-1][:40] if new_lines else "无新行")
 
         await run_cmd("/login")
-        check("2.9 /login 打开登录屏", type(app.screen).__name__ == "PasswordScreen")
-        # 登录屏键盘流：账号→Enter 跳密码→填→Enter 提交（假凭据）
-        await pilot.click("#acc")
-        for ch in "13000000000":
-            await pilot.press(ch)
-        await pilot.press("enter")  # 应跳到密码框
-        await pilot.pause(0.3)
-        await pilot.click("#pwd")
-        for ch in "e2e-wrong-pass":
-            await pilot.press(ch)
-        await pilot.press("enter")  # 提交
-        await pilot.pause(3.0)
-        check("2.10 登录屏提交不崩应用", type(app.screen).__name__ in ("PasswordScreen", "Screen"))
-        await pilot.click("#btn-back")
-        await pilot.pause(0.4)
-        check("2.11 返回回主屏", type(app.screen).__name__ == "Screen")
+        await pilot.pause(1.0)
+        check("2.9 /login 转圈等待", app._busy)
+        await pilot.press("escape")
+        await pilot.pause(0.6)
+        check("2.10 esc 取消等待不崩应用", not app._busy and type(app.screen).__name__ == "Screen")
+        check("2.11 取消提示可见",
+              any("已中断" in str(getattr(s, "text", "")) for s in app.query_one("#transcript").lines))
 
         # ===== 三、补全交互 =====
         box = app.query_one("#suggest-box", Static)
@@ -167,13 +158,13 @@ async def main() -> None:
         await pilot.pause(0.2)
         check("4.3 PgUp 翻页不报错", True)
         # 模态屏内 Tab 仍为焦点切换
-        await app.commands.dispatch(app, "/login")
+        await app.commands.dispatch(app, "/model")
         await pilot.pause(0.5)
         await pilot.press("tab")
         await pilot.pause(0.3)
-        check("4.4 登录屏 Tab 切焦点", app.focused is not None and app.focused.id != "acc",
+        check("4.4 配置屏 Tab 切焦点", app.focused is not None and app.focused.id != "cfg-model",
               f"焦点={app.focused.id if app.focused else None}")
-        await pilot.click("#btn-back")
+        await pilot.click("#btn-cancel")
         await pilot.pause(0.3)
 
         # ===== 五、边界 =====

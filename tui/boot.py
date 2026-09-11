@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING  # 仅类型标注使用宿主，避免运行�
 from cdp.browser import EdgeBrowser  # 自动化 Edge 的启动与连接
 from core.agent import Agent  # 任务执行主循环
 from core.config import XIUMI_HOME, load_config  # 配置解析与数据目录
-from core.events import Event, EventType  # 强类型事件
 from core.llm import LLMClient  # OpenAI 兼容客户端
 from core.log import setup_logging  # 统一日志初始化（滚动文件）
 from core.registry import AppContext, PluginManager  # 插件装载与工具注册
@@ -90,15 +89,3 @@ def _report_login_state(app: "XiumiAgentApp", logged_in: bool) -> None:
     app.logger.info("boot 完成 logged_in=%s tools=%s", logged_in, len(app.registry.names()))
 
 
-def make_login_result_minimizer(app: "XiumiAgentApp") -> None:
-    """订阅登录成功事件：浏览器收回后台。
-
-    Args: app 宿主。Returns: None。
-    """
-
-    def _on_login(event: Event) -> None:
-        """登录成功回调。Args: event LOGIN_RESULT 事件。"""
-        if event.ok:
-            app._window.set("minimized")
-
-    app.bus.on(EventType.LOGIN_RESULT, _on_login)

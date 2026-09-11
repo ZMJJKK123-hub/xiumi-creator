@@ -40,17 +40,16 @@ Screen {{ background: {BG}; }}
 #hint {{ width: auto; height: 1; color: {GRAY}; }}
 #info {{ width: 1fr; height: 1; overflow: hidden; text-align: right; color: {GRAY}; }}
 #help-box {{ border: round {ACCENT}; background: {SURFACE}; padding: 1 2; margin: 4 12; width: 76; }}
-PasswordScreen {{ align: center middle; }}
-#pwd-box, #cfg-box {{ width: 64; height: auto; border: round {BORDER_MUTED}; background: {SURFACE}; padding: 1 2; }}
-#pwd-box Button, #cfg-box Button {{
+#cfg-box {{ width: 64; height: auto; border: round {BORDER_MUTED}; background: {SURFACE}; padding: 1 2; }}
+#cfg-box Button {{
     background: #1f1f1f; color: #e8e8e8;
     border: round {BORDER_MUTED}; text-style: none;
 }}
-#pwd-box Button:hover, #pwd-box Button:focus, #cfg-box Button:hover, #cfg-box Button:focus {{ border: round {ACCENT}; background: #262626; }}
-#pwd-box Horizontal, #cfg-box Horizontal {{ height: auto; }}
-#pwd-box Horizontal Button, #cfg-box Horizontal Button {{ width: 1fr; }}
-#acc, #pwd, #sms, #cfg-model, #cfg-key, #cfg-url {{ border: tall {BORDER_MUTED}; background: #101010; }}
-#acc:focus, #pwd:focus, #sms:focus, #cfg-model:focus, #cfg-key:focus, #cfg-url:focus {{ border: tall {ACCENT}; }}
+#cfg-box Button:hover, #cfg-box Button:focus {{ border: round {ACCENT}; background: #262626; }}
+#cfg-box Horizontal {{ height: auto; }}
+#cfg-box Horizontal Button {{ width: 1fr; }}
+#cfg-model, #cfg-key, #cfg-url {{ border: tall {BORDER_MUTED}; background: #101010; }}
+#cfg-model:focus, #cfg-key:focus, #cfg-url:focus {{ border: tall {ACCENT}; }}
 .login-title {{ text-style: bold; color: {ACCENT}; }}
 .login-sub {{ color: {GRAY}; margin-bottom: 1; }}
 """

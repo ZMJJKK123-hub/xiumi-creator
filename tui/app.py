@@ -20,9 +20,9 @@ from core.log import get_logger  # 统一日志
 from core.registry import AppContext, PluginManager, ToolRegistry  # 插件体系
 from tui.actions import LLMConfigActions, ShortcutActions  # 快捷键与 LLM 配置 Mixin
 from tui.autocomplete import SuggestController  # 斜杠命令补全
-from tui.boot import boot, make_login_result_minimizer  # 启动编排
+from tui.boot import boot  # 启动编排
 from tui.commands import CommandRouter  # 斜杠命令路由
-from tui.screens import HelpScreen  # 帮助浮层（PasswordScreen 由命令层打开）
+from tui.screens import HelpScreen  # 帮助浮层
 from tui.spinner import SpinnerState  # spinner 状态机
 from tui.theme import ACCENT, APP_CSS, GRAY, RED  # 主题常量与全局 CSS
 from tui.widgets import Transcript  # 流水（输入框用通用 Input）
@@ -102,7 +102,6 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
         """boot worker：调用 tui.boot 编排，取消仅记日志。"""
         try:
             await boot(self)
-            make_login_result_minimizer(self)
         except asyncio.CancelledError:
             self.logger.info("boot 被取消")
 
@@ -115,7 +114,6 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
         bus.on(EventType.STATUS, lambda e: self.set_status(e.text, e.error))
         bus.on(EventType.SCREENSHOT, lambda e: t.write_tool_note(f"截图: {e.path}"))
         bus.on(EventType.ERROR, lambda e: t.write_system("⚠ " + e.message))
-        bus.on(EventType.CAPTCHA_REQUIRED, lambda e: self._set_window("normal"))
         bus.on(EventType.TASK_DONE, self._on_task_done)
 
     def _on_task_done(self, event: Event) -> None:

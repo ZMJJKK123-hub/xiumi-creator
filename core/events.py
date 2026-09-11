@@ -24,9 +24,6 @@ class EventType(Enum):
     ACTION = "action"                  # 工具调用开始 {name, args}
     TOOL_RESULT = "tool_result"        # 工具调用结束 {name, result}
     SCREENSHOT = "screenshot"          # 产生截图文件 {path}
-    SMS_REQUIRED = "sms_required"      # 页面要求短信验证码 {}
-    CAPTCHA_REQUIRED = "captcha_required"  # 需人工滑块验证 {}
-    LOGIN_RESULT = "login_result"      # 登录轮询结果 {ok, message}
     TASK_DONE = "task_done"            # 一轮任务结束 {ok, message}
     ERROR = "error"                    # 错误提示 {message}
 
@@ -37,7 +34,7 @@ class Event:
 
     属性：type 分发键；text/error STATUS 用；role CHAT 用；
     name/args/result ACTION 与 TOOL_RESULT 用；path SCREENSHOT 用；
-    ok/message LOGIN_RESULT 与 TASK_DONE 用。
+    ok/message TASK_DONE 用。
     生命周期：emit() 构造 → 总线同步分发全部订阅者 → 废弃。
     """
 

@@ -7,7 +7,6 @@ from __future__ import annotations
 from pathlib import Path  # /file 的路径校验
 from typing import Any, Awaitable, Callable  # 处理器与宿主类型标注
 
-from tui.screens import PasswordScreen  # /login 打开账密屏
 
 # 命令处理器签名：接收宿主 App 与用户输入原文，返回是否已消费
 Handler = Callable[[Any, str], Awaitable[bool]]
@@ -23,16 +22,56 @@ COMMAND_INFO = {
 
 
 async def _cmd_login(app: Any, raw: str) -> bool:
-    """/login：打开账密登录屏。
+    """/login：弹出浏览器官网登录页，转圈等待用户完成登录。
 
     Args: app 宿主; raw 原始输入。Returns: 恒 True。
-    Calls: app.push_screen / app._chat。
+    Calls: tab.navigate / app._set_busy / xiumi_login.check 轮询。
     """
-    if app.actions:
-        app.push_screen(PasswordScreen())
-    else:
-        app._chat("system", "插件尚未就绪，稍等片刻再试")
-    return True
+    if not (app.ctx and app.ctx.tab):
+        app._chat("system", "浏览器尚未就绪")
+        return True
+    if app._busy:
+        app._chat("system", "⏳ 上一轮任务还在进行中，esc 可中断")
+        return True
+    app.run_worker(_login_wait(app), thread=False)
+
+
+def _login_wait(app: Any):
+    """构造登录等待协程：弹官网 → 转圈轮询 → 成功/超时/取消回报。
+
+    Args: app 宿主。Returns: 协程函数。
+    """
+    import asyncio  # 轮询间隔
+    import time  # 超时计时
+
+    async def _run() -> None:
+        """登录等待主体。Args: None。Returns: None。"""
+        try:
+            app._set_busy(True)  # 先转圈再导航，反馈即时
+            app._chat("system", "请在弹出的浏览器窗口完成登录，最长等待 5 分钟，esc 取消")
+            await app.ctx.tab.navigate("https://xiumi.us/auth", settle=2.0)
+            deadline = time.monotonic() + 300
+            logged = False
+            while time.monotonic() < deadline:
+                await asyncio.sleep(2.0)
+                try:
+                    logged = await app.actions["xiumi_login.check"]()
+                except asyncio.CancelledError:
+                    raise
+                except Exception as exc:  # noqa: BLE001 轮询中页面跳转属常态
+                    app.logger.debug("登录轮询: %s", exc)
+                if logged:
+                    break
+            if logged:
+                app._chat("system", "✻ 登录成功，可以开始任务")
+            else:
+                app._chat("system", "⚠ 登录等待超时，可重新 /login")
+        finally:
+            # 取消消息由 esc 中断动作统一报告；此处仅复位，拆除期跳过（清理竞态）
+            if app.is_running:
+                app._set_busy(False)
+
+    return _run()
 
 
 async def _cmd_help(app: Any, raw: str) -> bool:
