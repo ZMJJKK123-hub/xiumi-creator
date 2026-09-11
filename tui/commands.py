@@ -125,8 +125,7 @@ class CommandRouter:
 
         Args: app 宿主; raw 原始输入。Returns: True=已消费，不再当任务处理。
         """
-        token = raw.split(maxsplit=1)[0] if raw.startswith(("/", "?")) else ""
-        token = "/help" if token == "?" else token
+        token = raw.split(maxsplit=1)[0] if raw.startswith("/") else ""
         handler = self._routes.get(token)
         if handler is None:
             return False

@@ -86,7 +86,7 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
             yield Input(placeholder='Try "写一篇秋天咖啡店探店推文"', id="task")
         yield Rule(id="rule-bot")
         yield Horizontal(
-            Static("? 快捷键 · ↑↓ 历史", id="hint"),
+            Static("/help 帮助", id="hint"),
             Static("", id="info"),
             id="footer",
         )
@@ -189,7 +189,7 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
         """切换忙碌态：状态栏、spinner、浏览器窗口显隐。"""
         self._busy = busy
         self.query_one("#hint", Static).update(
-            Text("esc 中断任务", style=f"bold {ACCENT}") if busy else Text("? 快捷键 · ↑↓ 历史", style=GRAY)
+            Text("esc 中断任务", style=f"bold {ACCENT}") if busy else Text("/help 帮助", style=GRAY)
         )
         if not busy:
             self.query_one("#spinner", Static).update("")
