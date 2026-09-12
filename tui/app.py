@@ -9,6 +9,7 @@ import plugins as _plugins_pkg  # 已安装的插件包：定位插件目录（�
 from rich.text import Text  # 状态栏富文本
 from textual.binding import Binding  # 带优先级的键位绑定（Tab 补全需越过 Screen 默认焦点切换）
 from textual.app import App, ComposeResult  # 应用基类与布局协议
+from textual.css.query import NoMatches  # 拆除期部件查询异常（欢迎卡刷新兜底）
 from textual.containers import Horizontal  # 输入框/状态栏横向容器
 from textual.widgets import Input, Rule, Static  # 基础组件
 
@@ -25,7 +26,7 @@ from tui.commands import CommandRouter  # 斜杠命令路由
 from tui.screens import HelpScreen  # 帮助浮层
 from tui.spinner import SpinnerState  # spinner 状态机
 from tui.theme import ACCENT, APP_CSS, GRAY, RED  # 主题常量与全局 CSS
-from tui.widgets import Transcript  # 流水（输入框用通用 Input）
+from tui.widgets import Transcript, WelcomeCard  # 常驻欢迎卡与流水（输入框用通用 Input）
 from tui.window import WindowScheduler  # 浏览器窗口显隐
 
 # 插件目录：从已安装包定位
@@ -76,7 +77,8 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
         self._task_started = 0.0
 
     def compose(self) -> ComposeResult:
-        """布局：流水 / spinner / 候选面板 / 输入框 / 状态栏。"""
+        """布局：欢迎卡 / 流水 / spinner / 候选面板 / 输入框 / 状态栏。"""
+        yield WelcomeCard()
         yield Transcript(id="transcript")
         yield Static("", id="spinner")
         yield Static("", id="suggest-box")
@@ -230,6 +232,16 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
     def _welcome_model(self) -> str:
         """模型显示文案：未配好时提示未配置。"""
         return self.config.model if self.config.llm_ready else "未配置"
+
+    def refresh_welcome(self) -> None:
+        """刷新欢迎卡模型文案（boot 与配置屏保存后调用）。
+
+        Args: None。Returns: None。Calls: WelcomeCard.set_model。
+        """
+        try:
+            self.query_one(WelcomeCard).set_model(self._welcome_model())
+        except NoMatches:  # 拆除期部件已销毁，无需刷新
+            self.logger.debug("欢迎卡刷新跳过：部件不存在")
 
     async def quick_shot(self) -> None:
         """手动截图当前页面到 screenshots 目录。"""

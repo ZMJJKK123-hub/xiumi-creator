@@ -1,16 +1,66 @@
-"""终端组件：任务输入框与对话流水渲染器。
+"""终端组件：常驻欢迎卡、任务输入框与对话流水渲染器。
 
 Rule2 §1 表现层组件；颜色常量在 theme，纯算法在 textutils，
-欢迎卡构建在 welcome——本文件只保留组件本身。
+欢迎卡内容构建在 welcome——本文件只保留组件本身。
 """
 from __future__ import annotations
 
 from rich.text import Text  # 富文本行，流水各元素的载体
-from textual.widgets import RichLog  # 滚动日志基类（输入框已移至通用 Input）
+from textual import events  # Resize 事件（欢迎卡随窗口重排）
+from textual.widgets import RichLog, Static  # 滚动日志与静态部件基类
 
 from tui.textutils import fold_multiline, truncate_cells  # 折行与显示宽度截断
 from tui.theme import GRAY, RED, USER_BAR_BG  # 主题常量
-from tui.welcome import build_welcome  # 欢迎卡构建（双栏/简版）
+from tui.welcome import build_title, build_welcome  # 欢迎卡标题与内容构建
+
+
+class WelcomeCard(Static):
+    """常驻欢迎卡：铺满宽度、随窗口 resize 自动重排、模型名即时刷新。
+
+    类变量：can_focus=False（焦点恒留输入框）。
+    实例：_model 当前模型文案；render 按卡内宽度实时构建内容。
+    生命周期：compose 创建；set_model 由 boot 与配置屏保存调用。
+    """
+
+    can_focus = False
+
+    def __init__(self) -> None:
+        """初始化：空内容挂载，模型文案由 boot 注入。
+
+        Args: None。
+        """
+        super().__init__("")
+        self._model: str = "-"
+        self.border_title = build_title()
+
+    def set_model(self, model: str) -> None:
+        """更新模型显示文案并触发重排。
+
+        Args: model 模型显示文案。Returns: None。
+        """
+        self._model = model
+        self.refresh(layout=True)
+
+    def on_resize(self, event: events.Resize) -> None:
+        """窗口尺寸变化：按新宽度重排卡内内容。"""
+        self.refresh(layout=True)
+
+    def _width(self) -> int:
+        """卡内内容宽度；布局未完成时回退终端宽度估算。
+
+        Args: None。Returns: int 显示格数。
+        """
+        if self.content_size.width:
+            return self.content_size.width
+        try:
+            return max(self.app.size.width - 8, 40)
+        except Exception:  # noqa: BLE001 无 app 上下文的兜底（理论不可达）
+            return 80
+
+    def render(self):
+        """按当前卡内宽度构建内容（每次刷新重算，保证 resize 跟随）。"""
+        return build_welcome(self._model, self._width())
+
 
 
 
@@ -44,14 +94,6 @@ class Transcript(RichLog):
             return self.app.size.width
         except Exception:  # noqa: BLE001 无 app 上下文的兜底（理论不可达）
             return 80
-
-    def write_welcome(self, model: str = "-") -> None:
-        """写入欢迎卡：宽终端双栏，窄终端简版。
-
-        Args: model 模型显示文案。Returns: None。
-        """
-        self.write(build_welcome(model, self._w()))
-        self.write("")
 
     def write_user(self, text: str) -> None:
         """用户命令条：全宽背景条 + 多行折叠摘要。

@@ -25,10 +25,9 @@ class ShortcutActions:
         self.transcript().write_system("⏹ 已中断（esc）")
 
     def action_clear_logs(self) -> None:
-        """ctrl+l：清屏并重绘欢迎卡。"""
-        t = self.transcript()
-        t.clear()
-        t.write_welcome(self._welcome_model())
+        """ctrl+l：清空流水区并刷新欢迎卡。"""
+        self.transcript().clear()
+        self.refresh_welcome()
 
     def action_suggest_next(self) -> None:
         """Tab：候选打开时下一个候选，否则正常切换焦点。"""

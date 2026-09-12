@@ -18,6 +18,11 @@ VERSION = "v0.1.1"        # 应用版本号：xiumi version / 欢迎卡标题共
 # 主界面 CSS：布局三区（流水/spinner/输入框）+ 底部状态栏 + 模态屏
 APP_CSS = f"""
 Screen {{ background: {BG}; }}
+#welcome {{
+    height: auto; margin: 0 1; padding: 0 1;
+    border: round {ACCENT}; border-title-color: {ACCENT};
+    background: transparent;
+}}
 #transcript {{
     height: 1fr; padding: 0 1; background: transparent;
     scrollbar-background: #101010;

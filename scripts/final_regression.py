@@ -48,6 +48,17 @@ async def _run() -> None:
         check("1.3 未登录提示两命令", "未登录：/login 登录 · /model 配置模型" in svg_texts(app.export_screenshot())[0:200] or True)  # 宽松：状态由后续步验证
         tab_url = await app.ctx.tab.current_url()
         check("1.4 单标签且在秀米", "xiumi.us" in tab_url and "about:blank" not in tab_url, tab_url[:40])
+        # 欢迎卡常驻部件：宽度铺满 + 模型名完整
+        from tui.widgets import WelcomeCard  # 欢迎卡部件（宽度断言用）
+        wc = app.query_one(WelcomeCard)
+        await pilot.resize_terminal(130, 32)
+        await pilot.pause(0.3)
+        w_now = wc.region.width if wc.region else -1
+        check("1.5 欢迎卡随窗口铺满", w_now >= 126, f"region={w_now}")
+        flat = re.sub(r"<[^>]+>", "", app.export_screenshot())
+        check("1.6 模型名完整无截断", "deepseek-v4-flash" in flat and "…" not in flat, "")
+        await pilot.resize_terminal(110, 32)
+        await pilot.pause(0.2)
 
         # ===== 二、命令全集 =====
         inp = app.query_one("#task", Input)
@@ -86,6 +97,8 @@ async def _run() -> None:
         env = Path(".env").read_text(encoding="utf-8")
         check("2.6 三项持久化 .env", all(k in env for k in
               ("MODEL=e2e-model", "OPENAI_API_KEY=sk-e2e-key-000", "OPENAI_BASE_URL=https://api.e2e.test")))
+        wc_model = app.query_one(WelcomeCard)._model
+        check("2.12 配置保存后欢迎卡即时刷新", wc_model == "e2e-model", f"card={wc_model}")
 
         await app.ctx.tab.navigate("https://xiumi.us/", settle=2.0)  # 滑块 iframe 页截图会挂起(已知限制)，回首页验证本体
         await run_cmd("/shot")

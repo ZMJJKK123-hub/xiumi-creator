@@ -115,6 +115,7 @@ class ModelConfigScreen(ModalScreen[bool]):
             app.apply_model(model)
         else:
             app._refresh_agent()
+        app.refresh_welcome()
         if not saved:
             self._status("未填写任何项")
             return
