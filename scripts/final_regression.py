@@ -131,8 +131,10 @@ async def _run() -> None:
         await pilot.press("escape")
         await pilot.pause(0.6)
         check("2.10 esc 取消等待不崩应用", not app._busy and type(app.screen).__name__ == "Screen")
-        check("2.11 取消提示可见",
-              any("已中断" in str(getattr(s, "text", "")) for s in app.query_one("#transcript").lines))
+        tl_all = [str(getattr(s, "text", "")) for s in app.query_one("#transcript").lines]
+        n_interrupt = sum("已中断" in l for l in tl_all)
+        check("2.11 取消提示可见且仅一条", any("已中断" in l for l in tl_all) and n_interrupt == 1,
+              f"{n_interrupt} 条")
 
         # ===== 三、补全交互 =====
         box = app.query_one("#suggest-box", Static)
@@ -169,8 +171,8 @@ async def _run() -> None:
         await pilot.pause(0.3)
         await pilot.pause(0.3)
         check("4.1 esc 解除忙碌态", not app._busy)
-        svg = app.export_screenshot()
-        check("4.2 底栏提示 /help 帮助", any("/help 帮助" in t for t in svg_texts(svg)))
+        hint_txt = str(app.query_one("#hint", Static).content or "")
+        check("4.2 空闲底栏清空（无 /help 残留）", hint_txt == "", repr(hint_txt[:20]))
         await pilot.press("pageup")
         await pilot.pause(0.2)
         check("4.3 PgUp 翻页不报错", True)

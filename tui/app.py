@@ -25,12 +25,15 @@ from tui.boot import boot  # 启动编排
 from tui.commands import CommandRouter  # 斜杠命令路由
 from tui.screens import HelpScreen  # 帮助浮层
 from tui.spinner import SpinnerState  # spinner 状态机
-from tui.theme import ACCENT, APP_CSS, GRAY, RED  # 主题常量与全局 CSS
+from tui.theme import ACCENT, APP_CSS  # 主题常量与全局 CSS
 from tui.widgets import Transcript, WelcomeCard  # 常驻欢迎卡与流水（输入框用通用 Input）
 from tui.window import WindowScheduler  # 浏览器窗口显隐
 
 # 插件目录：从已安装包定位
 PLUGINS_DIR = Path(_plugins_pkg.__file__).resolve().parent
+
+# 任务总超时（秒）：LLM/工具单步各有超时，此为整任务兜底，防止无限转圈
+TASK_TIMEOUT_S = 600
 
 class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
     """xiumi-agent 主应用。
@@ -77,7 +80,7 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
         self._task_started = 0.0
 
     def compose(self) -> ComposeResult:
-        """布局：欢迎卡 / 流水 / spinner / 候选面板 / 输入框 / 状态栏。"""
+        """布局：欢迎卡 / 流水 / spinner / 候选面板 / 输入框 / 底栏。"""
         yield WelcomeCard()
         yield Transcript(id="transcript")
         yield Static("", id="spinner")
@@ -88,8 +91,7 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
             yield Input(placeholder='Try "写一篇秋天咖啡店探店推文"', id="task")
         yield Rule(id="rule-bot")
         yield Horizontal(
-            Static("/help 帮助", id="hint"),
-            Static("", id="info"),
+            Static("", id="hint"),
             id="footer",
         )
 
@@ -108,12 +110,11 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
             self.logger.info("boot 被取消")
 
     def _wire_events(self) -> None:
-        """订阅系统事件并映射到流水/状态栏/浏览器窗口。"""
+        """订阅系统事件并映射到流水（状态类信息走流水，不占底栏）。"""
         bus, t = self.bus, self.transcript()
         bus.on(EventType.CHAT, lambda e: self._chat(e.role, e.text))
         bus.on(EventType.ACTION, lambda e: t.write_action(e.name, e.args))
         bus.on(EventType.TOOL_RESULT, lambda e: t.write_result(e.name, e.result))
-        bus.on(EventType.STATUS, lambda e: self.set_status(e.text, e.error))
         bus.on(EventType.SCREENSHOT, lambda e: t.write_tool_note(f"截图: {e.path}"))
         bus.on(EventType.ERROR, lambda e: t.write_system("⚠ " + e.message))
         bus.on(EventType.TASK_DONE, self._on_task_done)
@@ -173,27 +174,28 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
         self._worker = self.run_worker(self._run_task(task_text), thread=False)
 
     async def _run_task(self, task_text: str) -> None:
-        """任务 worker：执行 Agent 循环，异常与取消均转为用户可见。"""
+        """任务 worker：执行 Agent 循环（总超时兜底），异常与取消均转为用户可见。"""
         try:
-            await self.agent.run(task_text)
+            await asyncio.wait_for(self.agent.run(task_text), timeout=TASK_TIMEOUT_S)
         except asyncio.CancelledError:
-            self.transcript().write_system("⏹ 已中断")
+            raise  # 中断提示由 esc 动作统一报告，避免双重输出
+        except asyncio.TimeoutError:
+            self._chat("system", f"⚠ 任务超时（{TASK_TIMEOUT_S // 60} 分钟），已终止")
         except Exception as exc:  # noqa: BLE001 任务边界：失败必须可见
             self.logger.error("任务异常", exc_info=exc)
             self._chat("system", f"⚠ 任务异常中断: {type(exc).__name__}: {exc}")
         finally:
             self._set_busy(False)
 
-    # ---- 忙碌态与浏览器窗口 ----
+    # ---- 忙碌态 ----
     def _set_busy(self, busy: bool) -> None:
-        """切换忙碌态：状态栏、spinner、浏览器窗口显隐。"""
+        """切换忙碌态：底栏提示与 spinner（浏览器显隐由登录流程单独管理）。"""
         self._busy = busy
         self.query_one("#hint", Static).update(
-            Text("esc 中断任务", style=f"bold {ACCENT}") if busy else Text("/help 帮助", style=GRAY)
+            Text("esc 中断任务", style=f"bold {ACCENT}") if busy else Text("")
         )
         if not busy:
             self.query_one("#spinner", Static).update("")
-        self._set_window("normal" if busy else "minimized")
 
     def _set_window(self, state: str) -> None:
         """派发浏览器窗口显隐（委托 WindowScheduler）。Args: state 目标状态。"""
@@ -220,10 +222,6 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
             t.write_assistant(text)
         else:
             t.write_system(text)
-
-    def set_status(self, text: str, error: bool = False) -> None:
-        """更新右下状态栏。Args: text 文案; error 是否红色错误态。"""
-        self.query_one("#info", Static).update(Text(text, style=f"bold {RED}" if error else f"dim {GRAY}"))
 
     def open_help(self) -> None:
         """打开快捷键帮助浮层。"""

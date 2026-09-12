@@ -49,6 +49,7 @@ def _login_wait(app: Any):
         try:
             app._set_busy(True)  # 先转圈再导航，反馈即时
             app._chat("system", "请在弹出的浏览器窗口完成登录，最长等待 5 分钟，esc 取消")
+            app._set_window("normal")  # 仅登录流程弹出浏览器，任务全程保持后台
             await app.ctx.tab.navigate("https://xiumi.us/auth", settle=2.0)
             deadline = time.monotonic() + 300
             logged = False
@@ -67,8 +68,9 @@ def _login_wait(app: Any):
             else:
                 app._chat("system", "⚠ 登录等待超时，可重新 /login")
         finally:
-            # 取消消息由 esc 中断动作统一报告；此处仅复位，拆除期跳过（清理竞态）
+            # 取消消息由 esc 中断动作统一报告；此处仅复位与收窗，拆除期跳过（清理竞态）
             if app.is_running:
+                app._set_window("minimized")
                 app._set_busy(False)
 
     return _run()

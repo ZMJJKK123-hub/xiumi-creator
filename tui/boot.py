@@ -22,9 +22,7 @@ async def boot(app: "XiumiAgentApp") -> None:
 
     Globals Used: None（状态全部挂 app 实例）。
     Calls: _load_and_log / _start_browser / _check_login / _report_login_state。
-    Args: app 宿主（提供 bus/_chat/set_status 等通道）。Returns: None。
     """
-    app.set_status("启动中")
     app.config = load_config()
     app.ctx.config = app.config  # 保持上下文与宿主持有同一份配置
     setup_logging(XIUMI_HOME / "logs")
@@ -41,7 +39,6 @@ async def _start_browser(app: "XiumiAgentApp") -> bool:
 
     Args: app 宿主。Returns: 是否成功；失败已提示用户并置 _boot_failed。
     """
-    app.set_status("启动 Edge")
     try:
         app.browser = EdgeBrowser(app.config)
         await app.browser.ensure_started(start_url="https://xiumi.us/")
@@ -53,13 +50,11 @@ async def _start_browser(app: "XiumiAgentApp") -> bool:
         app.actions = app.plugins.actions
     except Exception as exc:  # noqa: BLE001 启动边界：失败必须转为用户可见提示
         app._boot_failed = True
-        app.set_status("启动失败", error=True)
         app._chat("system", f"⚠ 浏览器或插件启动失败: {exc}")
         app.logger.error("boot 失败", exc_info=exc)
         return False
     if app.config.llm_ready:
         app.agent = Agent(app.ctx, app.registry, LLMClient(app.config), app.bus)
-    app.set_status(f"{app._welcome_model()} · {len(app.registry.names())} tools")
     return True
 
 
@@ -69,6 +64,10 @@ async def _check_login(app: "XiumiAgentApp") -> bool:
     Args: app 宿主。Returns: 是否已登录。
     """
     try:
+        url = await app.ctx.tab.current_url()
+        if "/auth" in url:
+            # 上次取消的登录页残留会短路误判未登录：先回主页再按内容判定
+            await app.ctx.tab.navigate("https://xiumi.us/", settle=2.0)
         return bool(await app.actions["xiumi_login.check"]())
     except Exception as exc:  # noqa: BLE001 登录检查失败按未登录处理
         app.logger.warning("登录检查异常: %s", exc)
@@ -76,15 +75,13 @@ async def _check_login(app: "XiumiAgentApp") -> bool:
 
 
 def _report_login_state(app: "XiumiAgentApp", logged_in: bool) -> None:
-    """按登录态给出提示与状态栏文案。
+    """按登录态给出提示文案。
 
     Args: app 宿主; logged_in 检查结果。Returns: None。
     """
     if not logged_in:
-        app.set_status("未登录")
         app._chat("system", "未登录：/login 登录 · /model 配置模型")
     else:
-        app.set_status(f"{app._welcome_model()} · 秀米已登录")
         app._chat("system", "✻ 就绪，输入任务开始。")
     app.logger.info("boot 完成 logged_in=%s tools=%s", logged_in, len(app.registry.names()))
 

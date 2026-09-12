@@ -62,7 +62,6 @@ class LLMConfigActions:
     """LLM 配置应用集合（Mixin）。
 
     类职责：模型/Key/地址变更后即时刷新 LLM 客户端与状态栏。
-    宿主需提供：config、agent、ctx、registry、bus、set_status、logger。
     """
 
     def apply_model(self, name: str) -> None:
@@ -79,7 +78,7 @@ class LLMConfigActions:
         self._refresh_agent()
 
     def _refresh_agent(self) -> None:
-        """按当前配置刷新：就绪重建 LLM 客户端，未就绪提示缺项命令。"""
+        """按当前配置刷新 Agent：已有则换 LLM 客户端，就绪且浏览器在位则新建。"""
         from core.llm import LLMClient  # 局部导入：避免模块级循环
 
         if self.agent is not None:
@@ -88,8 +87,3 @@ class LLMConfigActions:
             from core.agent import Agent  # 局部导入
 
             self.agent = Agent(self.ctx, self.registry, LLMClient(self.config), self.bus)
-        if self.config.llm_ready:
-            self.set_status(f"{self.config.model} · {len(self.registry.names())} tools")
-            return
-        if not self.config.llm_ready:
-            self.set_status("未配置，/model 设置")

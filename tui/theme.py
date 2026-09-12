@@ -43,7 +43,6 @@ Screen {{ background: {BG}; }}
 #task:focus {{ background-tint: transparent; }}
 #footer {{ height: 1; padding: 0 2; }}
 #hint {{ width: auto; height: 1; color: {GRAY}; }}
-#info {{ width: 1fr; height: 1; overflow: hidden; text-align: right; color: {GRAY}; }}
 #help-box {{ border: round {ACCENT}; background: {SURFACE}; padding: 1 2; margin: 4 12; width: 76; }}
 #cfg-box {{ width: 64; height: auto; border: round {BORDER_MUTED}; background: {SURFACE}; padding: 1 2; }}
 #cfg-box Button {{

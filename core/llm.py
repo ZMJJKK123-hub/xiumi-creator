@@ -49,6 +49,10 @@ class LLMClient:
                 resp = await self.client.chat.completions.create(**kwargs)
                 msg = resp.choices[0].message
                 d: dict = {"role": "assistant", "content": msg.content or ""}
+                # 思考型模型（deepseek 等）的网关要求历史消息原样带回 reasoning_content
+                reasoning = getattr(msg, "reasoning_content", None)
+                if reasoning:
+                    d["reasoning_content"] = reasoning
                 if msg.tool_calls:
                     d["tool_calls"] = [
                         {
