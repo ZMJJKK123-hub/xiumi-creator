@@ -45,12 +45,12 @@ class Transcript(RichLog):
         except Exception:  # noqa: BLE001 无 app 上下文的兜底（理论不可达）
             return 80
 
-    def write_welcome(self, model: str = "-", cwd: str = "-") -> None:
+    def write_welcome(self, model: str = "-") -> None:
         """写入欢迎卡：宽终端双栏，窄终端简版。
 
-        Args: model 模型显示文案; cwd 工作目录。Returns: None。
+        Args: model 模型显示文案。Returns: None。
         """
-        self.write(build_welcome(model, cwd, self._w()))
+        self.write(build_welcome(model, self._w()))
         self.write("")
 
     def write_user(self, text: str) -> None:

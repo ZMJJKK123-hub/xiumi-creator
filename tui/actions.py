@@ -28,7 +28,7 @@ class ShortcutActions:
         """ctrl+l：清屏并重绘欢迎卡。"""
         t = self.transcript()
         t.clear()
-        t.write_welcome(self._welcome_model(), self._welcome_cwd())
+        t.write_welcome(self._welcome_model())
 
     def action_suggest_next(self) -> None:
         """Tab：候选打开时下一个候选，否则正常切换焦点。"""

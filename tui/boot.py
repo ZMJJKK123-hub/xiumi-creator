@@ -28,7 +28,7 @@ async def boot(app: "XiumiAgentApp") -> None:
     app.config = load_config()
     app.ctx.config = app.config  # 保持上下文与宿主持有同一份配置
     setup_logging(XIUMI_HOME / "logs")
-    app.transcript().write_welcome(app._welcome_model(), app._welcome_cwd())
+    app.transcript().write_welcome(app._welcome_model())
     if not app.config.llm_ready:
         app._chat("system", "未配置，/model 设置模型与密钥。可登录和截图，不能执行任务。")
     if not await _start_browser(app):

@@ -27,7 +27,7 @@ def svg_texts(svg: str) -> list[str]:
     return [html_mod.unescape(x).replace("\xa0", " ") for x in re.findall(r">([^<>]+)</text>", svg)]
 
 
-async def main() -> None:
+async def _run() -> None:
     from tui.app import XiumiAgentApp
     from textual.widgets import Input, Static
     from tui.screens import HelpScreen, ModelConfigScreen
@@ -195,6 +195,20 @@ async def main() -> None:
         print("未通过项：")
         for n, d in fails:
             print(f"  - {n} {d}")
+
+
+async def main() -> None:
+    """运行全量回归；结束后恢复 .env 为运行前内容（套件会临时写入测试配置）。
+
+    Args: None。Returns: None。Calls: _run / Path.read_text / Path.write_text。
+    """
+    env_file = Path(".env")
+    backup = env_file.read_text(encoding="utf-8") if env_file.exists() else None
+    try:
+        await _run()
+    finally:
+        if backup is not None:
+            env_file.write_text(backup, encoding="utf-8")
 
 
 if __name__ == "__main__":
