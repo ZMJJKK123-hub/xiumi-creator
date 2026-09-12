@@ -29,8 +29,9 @@ class WelcomeCard(Static):
 
         Args: None。
         """
-        super().__init__("")
+        super().__init__("", id="welcome")  # id 绑定部件自身，CSS #welcome 恒生效
         self._model: str = "-"
+        self._last_w: int = -1  # 上次重排宽度（resize 守卫）
         self.border_title = build_title()
 
     def set_model(self, model: str) -> None:
@@ -42,8 +43,10 @@ class WelcomeCard(Static):
         self.refresh(layout=True)
 
     def on_resize(self, event: events.Resize) -> None:
-        """窗口尺寸变化：按新宽度重排卡内内容。"""
-        self.refresh(layout=True)
+        """窗口尺寸变化：宽度实际变化时才重排（防高度抖动循环）。"""
+        if event.size.width != self._last_w:
+            self._last_w = event.size.width
+            self.refresh(layout=True)
 
     def _width(self) -> int:
         """卡内内容宽度；布局未完成时回退终端宽度估算。

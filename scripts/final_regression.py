@@ -57,6 +57,10 @@ async def _run() -> None:
         check("1.5 欢迎卡随窗口铺满", w_now >= 126, f"region={w_now}")
         flat = re.sub(r"<[^>]+>", "", app.export_screenshot())
         check("1.6 模型名完整无截断", "deepseek-v4-flash" in flat and "…" not in flat, "")
+        svg_now = app.export_screenshot()
+        check("1.7 欢迎卡橙色边框渲染",
+              "╭" in flat and "#e06c38" in svg_now.lower() and "xiumi-agent" in flat,
+              "圆角+橙色+标题三要素")
         await pilot.resize_terminal(110, 32)
         await pilot.pause(0.2)
 
