@@ -41,15 +41,12 @@ _INNER_DIVIDER = Box(
 )
 
 
-def build_title() -> Text:
-    """构建卡片边框标题：`xiumi-agent v0.1.1`，名称粗体橙 + 版本灰。
+def build_title() -> str:
+    """卡片边框标题：纯文本，颜色由 CSS border-title-color 统一渲染。
 
-    Args: None。Returns: Text 标题片段（赋给 WelcomeCard.border_title）。
+    Args: None。Returns: str 标题文本（赋给 WelcomeCard.border_title）。
     """
-    title = Text()
-    title.append(" xiumi-agent ", style=f"bold {ACCENT}")
-    title.append(VERSION, style=GRAY)
-    return title
+    return f" xiumi-agent {VERSION}"
 
 
 def _model_line(model: str) -> Text:
