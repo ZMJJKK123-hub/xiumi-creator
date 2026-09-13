@@ -1,83 +1,111 @@
-"""思考过程面板：流式展示 thinking 文本，独立滚动，完成后收起为一行提示。
+"""思考过程面板：内联于消息流的独立滚动思考视窗。
 
-状态机：HIDDEN（默认）→ STREAMING（流式，5 行视窗自动追尾）
-→ COLLAPSED（一行提示）⇄ EXPANDED（ctrl+o，10 行视窗）。
-独立滚动：内部 RichLog 悬停滚轮只滚本面板，不影响全局流水。
+状态机：STREAMING（流式，5 行视窗自动追尾）→ COLLAPSED（一行提示）
+⇄ EXPANDED（ctrl+o，10 行视窗，从头阅读）。
+文本连续追加渲染（非逐行），节流刷新降低重绘开销。
 """
 from __future__ import annotations
 
-import time  # 轮次计时
+import time  # 轮次计时与刷新节流
 
-from rich.text import Text  # 状态行富文本
+from rich.text import Text  # 思考文本与状态行
 from textual.app import ComposeResult  # 布局协议
-from textual.containers import Vertical  # 边框容器
-from textual.widgets import RichLog, Static  # 滚动视窗与状态行
+from textual.containers import Vertical, VerticalScroll  # 面板与独立滚动视窗
+from textual.widgets import Static  # 文本承载
 
 from tui.theme import ACCENT, BORDER_MUTED, GRAY  # 主题色
 
-# 流式视窗行数 / 展开视窗行数
-STREAM_LINES, EXPAND_LINES = 5, 10
+# 刷新节流间隔（秒）：流式增量攒批渲染
+REFRESH_S = 0.06
 
 
 class ThinkingPanel(Vertical):
-    """思考流面板：可滚动思考视窗 + 状态行，按状态类切换形态。
+    """思考流面板：连续文本视窗 + 单行状态，按状态类切换形态。
 
     类变量：can_focus=False（焦点恒留输入框）。
-    实例：_log 思考视窗；_status 单行提示；_t0 轮次起点；_seconds 思考耗时。
-    生命周期：compose 创建于输入框上方；Agent 轮次驱动状态迁移。
+    实例：_buf 全量思考文本；_last 上次刷新时间戳；_t0 轮次起点。
+    生命周期：任务开始挂载进 Transcript；轮次驱动状态迁移，旧面板留存为收起行。
     """
 
     can_focus = False
-    DEFAULT_CLASSES = "hidden"
+    DEFAULT_CLASSES = "think-panel streaming"
+
+    def __init__(self) -> None:
+        """初始化文本缓冲与计时（子部件引用在 on_mount 后可用）。"""
+        super().__init__()
+        self._buf = ""
+        self._last = 0.0
+        self._t0 = 0.0
+        self._scroll = None
+        self._text = None
+        self._status = None
 
     def compose(self) -> ComposeResult:
-        """布局：思考视窗（上）+ 状态行（下，按状态显隐）。"""
-        yield RichLog(id="think-log", wrap=True, min_width=0, auto_scroll=True, markup=False)
+        """布局：独立滚动视窗（上）+ 单行状态（下，按状态显隐）。"""
+        yield VerticalScroll(Static("", id="think-text"), id="think-scroll")
         yield Static("", id="think-status")
 
     def on_mount(self) -> None:
-        """挂载后缓存子部件引用与边框标题。"""
-        self._log = self.query_one("#think-log", RichLog)
+        """挂载后缓存子部件引用。"""
+        self._scroll = self.query_one("#think-scroll", VerticalScroll)
+        self._text = self.query_one("#think-text", Static)
         self._status = self.query_one("#think-status", Static)
-        self._t0 = 0.0
-        self._seconds = 0.0
         self.border_title = " thinking "
 
     def _switch(self, state: str) -> None:
         """切换形态：移除全部状态类后挂目标类（CSS 控制显隐与高度）。"""
-        for cls in ("hidden", "streaming", "collapsed", "expanded", "tall"):
+        for cls in ("streaming", "collapsed", "expanded", "tall"):
             self.remove_class(cls)
         self.add_class(state)
 
     def begin_round(self) -> None:
-        """新思考轮开始：清空视窗，进入流式形态。"""
+        """新思考轮开始：清空文本，进入流式形态。"""
         self._t0 = time.time()
-        self._log.clear()
+        self._buf = ""
+        self._refresh(pin=True)
         self._switch("streaming")
 
     def reasoning(self, delta: str) -> None:
-        """思考增量写入视窗（auto_scroll 自动追尾，滚动查看时不打扰）。"""
-        self._log.write(delta, shrink=False, scroll_end=True)
+        """思考增量连续追加（节流渲染；视窗贴底时自动追尾）。"""
+        self._buf += delta
+        if self._text is None:
+            return  # 尚未挂载，仅累积
+        now = time.monotonic()
+        if now - self._last >= REFRESH_S:
+            self._last = now
+            self._refresh()
+
+    def _refresh(self, pin: bool = False) -> None:
+        """重绘思考文本；贴底（或强制）时滚动到最新内容。"""
+        if self._text is None or self._scroll is None:
+            return
+        follow = pin or self._scroll.scroll_y >= self._scroll.max_scroll_y - 1
+        self._text.update(Text(self._buf, style=GRAY))
+        if follow:
+            self._scroll.call_after_refresh(self._scroll.scroll_end, animate=False)
 
     def end_round(self, interrupted: bool = False) -> None:
-        """思考轮结束：收起为一行提示（记录耗时供展开展示）。"""
-        self._seconds = time.time() - self._t0
-        word = "已中断" if interrupted else f"思考了 {self._seconds:.0f}s"
+        """思考轮结束：最终渲染并收起为一行提示。"""
+        self._refresh(pin=True)
+        if self._status is None:
+            return
+        word = "已中断" if interrupted else f"思考了 {time.time() - self._t0:.0f}s"
         self._status.update(
-            Text(f"✻ {word} · ctrl+o 展开", style=f"dim {ACCENT}" if not interrupted else GRAY)
+            Text(f"✻ {word} · ctrl+o 展开", style=GRAY if interrupted else f"dim {ACCENT}")
         )
         self._switch("collapsed")
 
     def toggle(self) -> None:
-        """ctrl+o：收起 ⇄ 展开（仅在有思考内容时生效）。"""
+        """ctrl+o：收起 ⇄ 展开（展开后从头阅读）。"""
         if self.has_class("collapsed"):
             self._switch("expanded")
             self.add_class("tall")
+            self._scroll.call_after_refresh(self._scroll.scroll_home, animate=False)
         elif self.has_class("expanded"):
             self._switch("collapsed")
 
     def reset(self) -> None:
-        """任务终结：保持收起提示（新任务 begin_round 时再清空）。"""
+        """任务终结：仍在流式则收起为已中断提示。"""
         if self.has_class("streaming"):
             self.end_round(interrupted=True)
 
@@ -98,8 +126,7 @@ class ThinkingSink:
         self._t0 = 0.0
 
     def round_start(self) -> None:
-        """轮次开始：计时并让面板进入流式形态。"""
-        self._t0 = time.time()
+        """轮次开始：面板进入流式形态。"""
         self._panel.begin_round()
 
     def reasoning(self, delta: str) -> None:

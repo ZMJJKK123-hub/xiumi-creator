@@ -117,10 +117,10 @@ async def _run() -> None:
 
         await run_cmd("/file 不存在的文件.md")
         await pilot.pause(0.3)
-        before = len(app.query_one("#transcript").lines)
+        before = len(app.query_one("#transcript").texts())
         await app.commands.dispatch(app, "/file 再一个不存在.md")
         await pilot.pause(0.5)
-        after = [str(getattr(s, "text", "")) for s in app.query_one("#transcript").lines]
+        after = app.query_one("#transcript").texts()
         new_lines = after[before:]
         check("2.8 /file 缺文件报错", any("文件不存在" in l for l in new_lines),
               new_lines[-1][:40] if new_lines else "无新行")
@@ -131,7 +131,7 @@ async def _run() -> None:
         await pilot.press("escape")
         await pilot.pause(0.6)
         check("2.10 esc 取消等待不崩应用", not app._busy and type(app.screen).__name__ == "Screen")
-        tl_all = [str(getattr(s, "text", "")) for s in app.query_one("#transcript").lines]
+        tl_all = app.query_one("#transcript").texts()
         n_interrupt = sum("已中断" in l for l in tl_all)
         check("2.11 取消提示可见且仅一条", any("已中断" in l for l in tl_all) and n_interrupt == 1,
               f"{n_interrupt} 条")
@@ -173,8 +173,7 @@ async def _run() -> None:
         check("4.1 esc 解除忙碌态", not app._busy)
         hint_txt = str(app.query_one("#hint", Static).content or "")
         check("4.2 空闲底栏清空（无 /help 残留）", hint_txt == "", repr(hint_txt[:20]))
-        think = app.query_one("#think-panel")
-        check("4.5 思考面板默认隐藏", think.has_class("hidden") or not think.display)
+        check("4.5 思考面板默认未挂载", len(app.query(".think-panel")) == 0)
         await pilot.press("ctrl+o")
         await pilot.pause(0.3)
         check("4.6 ctrl+o 空闲时按键不崩溃", type(app.screen).__name__ == "Screen")
@@ -206,7 +205,7 @@ async def _run() -> None:
             await pilot.pause(0.5)
             if not app._busy:
                 break
-        tl5 = [str(getattr(s, "text", "")) for s in app.query_one("#transcript").lines]
+        tl5 = app.query_one("#transcript").texts()
         check("5.2 超长任务回显与异常提示",
               any("写一篇关于" in l for l in tl5) and any("任务异常" in l or "LLM 未配置" in l or "重试" in l for l in tl5),
               "回显+提示二要素")

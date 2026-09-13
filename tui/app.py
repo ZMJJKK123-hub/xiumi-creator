@@ -84,10 +84,9 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
         self._tick_timer = None  # spinner 定时器（on_unmount 停表）
 
     def compose(self) -> ComposeResult:
-        """布局：欢迎卡 / 流水 / 思考面板 / spinner / 候选面板 / 输入框 / 底栏。"""
+        """布局：欢迎卡 / 流水（思考面板内联挂载）/ spinner / 候选面板 / 输入框 / 底栏。"""
         yield WelcomeCard()
         yield Transcript(id="transcript")
-        yield ThinkingPanel(id="think-panel")
         yield Static("", id="spinner")
         yield Static("", id="suggest-box")
         yield Rule(id="rule-top")
@@ -101,9 +100,8 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
         )
 
     def on_mount(self) -> None:
-        """挂载：聚焦输入框、接线事件、缓存思考面板引用、启动 boot。"""
+        """挂载：聚焦输入框、接线事件、启动 boot。"""
         self._wire_events()
-        self._think = self.query_one(ThinkingPanel)
         self.query_one("#task", Input).focus()
         self._tick_timer = self.set_interval(0.12, self._tick_spinner)
         self.run_worker(self._boot_task(), thread=False)
@@ -179,9 +177,11 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
         return False
 
     def _start_task(self, task_text: str) -> None:
-        """进入忙碌态并启动任务 worker（思考流接入思考面板）。"""
+        """进入忙碌态，思考面板内联挂到发言之后，启动任务 worker。"""
         self._set_busy(True)
         self._task_started = time.time()
+        self._think = ThinkingPanel()
+        self.transcript().mount_thinking(self._think)
         sink = ThinkingSink(self._think)
         self._worker = self.run_worker(self._run_task(task_text, sink), thread=False)
 

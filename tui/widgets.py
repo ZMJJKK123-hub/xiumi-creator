@@ -7,7 +7,8 @@ from __future__ import annotations
 
 from rich.text import Text  # 富文本行，流水各元素的载体
 from textual import events  # Resize 事件（欢迎卡随窗口重排）
-from textual.widgets import RichLog, Static  # 滚动日志与静态部件基类
+from textual.containers import VerticalScroll  # 垂直滚动容器（消息流承载）
+from textual.widgets import Static  # 静态部件基类（单条消息载体）
 
 from tui.textutils import fold_multiline, truncate_cells  # 折行与显示宽度截断
 from tui.theme import GRAY, RED, USER_BAR_BG  # 主题常量
@@ -67,24 +68,15 @@ class WelcomeCard(Static):
 
 
 
-class Transcript(RichLog):
-    """单栏滚动流水：命令条、工具调用、结果、提示按序写入。
+class Transcript(VerticalScroll):
+    """消息流容器：每条消息独立部件，思考面板可内联挂载。
 
     类变量：can_focus=False（焦点恒留输入框）。
-    实例：wrap=True + min_width=0 按实际宽度换行，杜绝横向滚动条。
-    生命周期：compose 创建，App 全程复用；_w() 在 layout 未完成时回退终端宽。
+    实例：写入时若原本贴底则自动跟随滚动；用户上翻查看历史时不打扰。
+    生命周期：compose 创建，App 全程复用；clear 由 ctrl+l 调用。
     """
 
     can_focus = False
-
-    def __init__(self, *args, **kwargs) -> None:
-        """初始化：注入换行与最小宽度策略。
-
-        Args: *args/**kwargs 透传 RichLog（id 等）。
-        """
-        kwargs.setdefault("wrap", True)
-        kwargs.setdefault("min_width", 0)
-        super().__init__(*args, **kwargs)
 
     def _w(self) -> int:
         """可用内容宽度；layout 未完成(size=0)时回退 app 终端宽。
@@ -98,8 +90,43 @@ class Transcript(RichLog):
         except Exception:  # noqa: BLE001 无 app 上下文的兜底（理论不可达）
             return 80
 
+    def _pinned(self) -> bool:
+        """当前是否贴底（决定写入后是否跟随滚动）。"""
+        return self.scroll_y >= self.max_scroll_y - 1
+
+    def _emit(self, content) -> None:
+        """追加一条消息部件；原贴底时跟随滚动到末尾。
+
+        Args: content rich 渲染对象。Returns: None。
+        """
+        pin = self._pinned()
+        self.mount(Static(content))
+        if pin:
+            self.call_after_refresh(self.scroll_end, animate=False)
+
+    def mount_thinking(self, panel) -> None:
+        """内联挂载思考面板（跟在最新消息之后）并滚动进视野。
+
+        Args: panel ThinkingPanel 实例。Returns: None。
+        """
+        self.mount(panel)
+        self.call_after_refresh(self.scroll_end, animate=False)
+
+    def texts(self) -> list[str]:
+        """全部消息文本快照（rich Text 归一为纯文本；测试与取证用）。"""
+        out: list[str] = []
+        for child in self.children:
+            if isinstance(child, Static):
+                value = child.content
+                out.append(value.plain if hasattr(value, "plain") else str(value))
+        return out
+
+    def clear(self) -> None:
+        """清空全部消息部件（ctrl+l 清屏）。"""
+        self.remove_children()
+
     def write_user(self, text: str) -> None:
-        """用户命令条：全宽背景条 + 多行折叠摘要。
+        """用户命令条：全宽背景条 + 多行折叠摘要 + 尾随空行。
 
         Args: text 用户原始输入。Returns: None。
         """
@@ -107,18 +134,19 @@ class Transcript(RichLog):
         folded, _ = fold_multiline(text)
         line = truncate_cells(f"> {folded}", width)
         pad = " " * max(width - _cells(line), 0)
-        self.write(Text(line + pad, style=f"on {USER_BAR_BG} bold white"))
+        self._emit(Text(line + pad, style=f"on {USER_BAR_BG} bold white"))
+        self._emit(Text(" "))
 
     def write_assistant(self, text: str) -> None:
-        """助手回复：⏺ 粗体前缀 + 正文。
+        """助手回复：前导空行 + ⏺ 粗体前缀 + 正文。
 
         Args: text 回复文本。Returns: None。
         """
         t = Text()
         t.append("⏺ ", style="bold white")
-        t.append(text.rstrip() + "\n")
-        self.write(t)
-        self.write("")
+        t.append(text.rstrip())
+        self._emit(Text(" "))
+        self._emit(t)
 
     def write_action(self, name: str, args: dict) -> None:
         """工具调用行：└ + 粗体工具名 + 灰色参数（按宽度截断）。
@@ -132,7 +160,7 @@ class Transcript(RichLog):
         t.append(name, style="bold white")
         if brief:
             t.append(f"({brief})", style=GRAY)
-        self.write(t)
+        self._emit(t)
 
     def write_result(self, name: str, result: str) -> None:
         """工具结果行：两格缩进 └，灰字；空结果显 (no content)；错误红字；超两行折叠。
@@ -146,7 +174,7 @@ class Transcript(RichLog):
         t = Text()
         for i, ln in enumerate(shown):
             t.append(("  └ " if i == 0 else "    ") + truncate_cells(ln, limit) + "\n", style=style)
-        self.write(t)
+        self._emit(t)
 
     def write_system(self, text: str) -> None:
         """系统提示：└ 灰字；⚠/❌ 前缀错误转红色 X 行。
@@ -157,19 +185,19 @@ class Transcript(RichLog):
         t = Text()
         if stripped.startswith(("⚠", "❌")):
             t.append("X ", style=f"bold {RED}")
-            t.append(stripped.lstrip("⚠❌ ").strip() + "\n", style=RED)
+            t.append(stripped.lstrip("⚠❌ ").strip(), style=RED)
         else:
             t.append("└ ", style=GRAY)
-            t.append(stripped + "\n", style=GRAY)
-        self.write(t)
-        self.write("")
+            t.append(stripped, style=GRAY)
+        self._emit(t)
+        self._emit(Text(" "))
 
     def write_tool_note(self, text: str) -> None:
         """轻量附注行（截图路径等）：两格缩进 └ 灰字。
 
         Args: text 附注文本。Returns: None。
         """
-        self.write(Text("  └ " + text, style=GRAY))
+        self._emit(Text("  └ " + text, style=GRAY))
 
 
 def _cells(s: str) -> int:
