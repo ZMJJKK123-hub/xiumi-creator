@@ -92,3 +92,24 @@ class LLMConfigActions:
             from core.agent import Agent  # 局部导入
 
             self.agent = Agent(self.ctx, self.registry, LLMClient(self.config), self.bus)
+
+    def open_help(self) -> None:
+        """打开快捷键帮助浮层。Calls: App.push_screen（HelpScreen 局部导入）。"""
+        from tui.screens import HelpScreen  # 局部导入：避免循环依赖
+
+        self.push_screen(HelpScreen())
+
+    def _welcome_model(self) -> str:
+        """模型显示文案：未配好时提示未配置。"""
+        return self.config.model if self.config.llm_ready else "未配置"
+
+    async def quick_shot(self) -> None:
+        """手动截图当前页面到 screenshots 目录（/shot 的 worker 协程）。"""
+        import time  # 截图文件命名
+
+        try:
+            path = self.config.screenshots_dir / f'manual_{time.strftime("%H%M%S")}.png'
+            await self.ctx.tab.screenshot(path=path)
+            self.transcript().write_tool_note(f"截图: {path}")
+        except Exception as exc:  # noqa: BLE001 截图失败转为用户提示
+            self._chat("system", f"截图失败: {exc}")

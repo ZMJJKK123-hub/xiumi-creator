@@ -24,6 +24,7 @@ _KEY_MAP = {
 }
 
 
+
 class Tab:
     def __init__(self, conn: CDPConnection, session_id: str, target_info: dict):
         self.conn = conn
@@ -163,6 +164,7 @@ class Tab:
         await self.agent("triggerChange", selector)
 
     # ---- 真实按键兜底（isTrusted，合成事件不生效时用）----
+
     async def real_press(self, key: str) -> None:
         text, key_name, vk = _KEY_MAP.get(key, ("", key, 0))
         for type_ in ("keyDown", "keyUp") if not text else (("keyDown", "char", "keyUp")):
@@ -170,8 +172,3 @@ class Tab:
             if type_ == "char":
                 params["text"] = text
             await self.send("Input.dispatchKeyEvent", params)
-
-    async def real_type(self, text: str) -> None:
-        """逐字符发送真实键盘输入（焦点必须在目标输入框上）。"""
-        for ch in text:
-            await self.send("Input.dispatchKeyEvent", {"type": "char", "text": ch})

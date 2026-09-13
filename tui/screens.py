@@ -7,7 +7,6 @@ from textual.containers import Horizontal, Vertical  # 容器
 from textual.screen import ModalScreen  # 模态屏基类
 from textual.widgets import Button, Input, Label, Static  # 基础组件
 
-from core.events import Event, EventType  # 强类型事件
 from tui.theme import ACCENT, GRAY  # 主题色
 
 

@@ -9,7 +9,6 @@ import asyncio  # 轮询间隔与超时
 import json  # 选择器转义
 
 from cdp.helpers import Tab  # 页面标签类型
-from core.events import Event, EventType  # 状态提示事件
 from core.log import get_logger  # 边界异常记录
 from core.registry import AppContext, Plugin, Tool  # 插件契约
 

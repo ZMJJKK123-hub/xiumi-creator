@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import asyncio  # _set_window 的异步任务派发
-import time  # 任务计时与截图命名
+import time  # 任务计时
 from pathlib import Path  # 路径类型与插件目录定位
 
 import plugins as _plugins_pkg  # 已安装的插件包：定位插件目录（源码/安装两态一致）
@@ -14,16 +14,14 @@ from textual.containers import Horizontal  # 输入框/状态栏横向容器
 from textual.widgets import Input, Static  # 基础组件
 
 from cdp.browser import EdgeBrowser  # 自动化浏览器生命周期
-from core.config import Config, XIUMI_HOME, load_config  # 配置解析与数据目录
+from core.config import Config, load_config  # 配置解析
 from core.events import Event, EventBus, EventType  # 强类型事件总线
-from core.llm import LLMClient  # OpenAI 兼容客户端（apply_model 重建用）
 from core.log import get_logger  # 统一日志
 from core.registry import AppContext, PluginManager, ToolRegistry  # 插件体系
 from tui.actions import LLMConfigActions, ShortcutActions  # 快捷键与 LLM 配置 Mixin
 from tui.autocomplete import SuggestController  # 斜杠命令补全
 from tui.boot import boot  # 启动编排
 from tui.commands import CommandRouter  # 斜杠命令路由
-from tui.screens import HelpScreen  # 帮助浮层
 from tui.spinner import SpinnerState  # spinner 状态机
 from tui.theme import ACCENT, APP_CSS  # 主题常量与全局 CSS
 from tui.thinking import ThinkingPanel, ThinkingSink  # 思考流面板与回调适配
@@ -78,6 +76,7 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
         self.logger = get_logger("app")
         self._busy = False
         self._boot_failed = False
+        self._boot_done = False  # boot 是否结束（加载中发任务的提示分支）
         self._worker = None
         self._task_started = 0.0
         self._think: ThinkingPanel | None = None  # on_mount 缓存引用
@@ -110,11 +109,13 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
             self._tick_timer.stop()
 
     async def _boot_task(self) -> None:
-        """boot worker：调用 tui.boot 编排，取消仅记日志。"""
+        """boot worker：调用 tui.boot 编排，结束置位完成标记。"""
         try:
             await boot(self)
         except asyncio.CancelledError:
             self.logger.info("boot 被取消")
+        finally:
+            self._boot_done = True
 
     def _wire_events(self) -> None:
         """订阅系统事件并映射到流水（状态类信息走流水，不占底栏）。"""
@@ -162,12 +163,14 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
             self._start_task(raw)
 
     def _can_run_task(self) -> bool:
-        """任务前置校验：忙碌/LLM/浏览器三关卡。"""
+        """任务前置校验：忙碌/启动中/LLM/浏览器关卡，逐项给出准确提示。"""
         if self._busy:
             self._chat("system", "⏳ 上一轮任务还在进行中，esc 可中断")
             return False
-        if not self.agent:
-            self._chat("system", "⚠ LLM 未配置或未就绪，无法执行任务")
+        if not self._boot_done:
+            self._chat("system", "仍在启动中，请稍候再发")
+        elif not self.agent:
+            self._chat("system", "⚠ LLM 未配置，/model 设置模型与密钥")
         elif not (self.ctx and self.ctx.tab):
             self._chat("system", "⚠ 浏览器未就绪")
         else:
@@ -235,14 +238,6 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
         else:
             t.write_system(text)
 
-    def open_help(self) -> None:
-        """打开快捷键帮助浮层。"""
-        self.push_screen(HelpScreen())
-
-    def _welcome_model(self) -> str:
-        """模型显示文案：未配好时提示未配置。"""
-        return self.config.model if self.config.llm_ready else "未配置"
-
     def refresh_welcome(self) -> None:
         """刷新欢迎卡模型文案（boot 与配置屏保存后调用）。
 
@@ -253,11 +248,3 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
         except NoMatches:  # 拆除期部件已销毁，无需刷新
             self.logger.debug("欢迎卡刷新跳过：部件不存在")
 
-    async def quick_shot(self) -> None:
-        """手动截图当前页面到 screenshots 目录。"""
-        try:
-            path = self.config.screenshots_dir / f'manual_{time.strftime("%H%M%S")}.png'
-            await self.ctx.tab.screenshot(path=path)
-            self.transcript().write_tool_note(f"截图: {path}")
-        except Exception as exc:  # noqa: BLE001 截图失败转为用户提示
-            self._chat("system", f"截图失败: {exc}")

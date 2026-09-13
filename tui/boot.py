@@ -11,7 +11,6 @@ from core.agent import Agent  # 任务执行主循环
 from core.config import XIUMI_HOME, load_config  # 配置解析与数据目录
 from core.llm import LLMClient  # OpenAI 兼容客户端
 from core.log import setup_logging  # 统一日志初始化（滚动文件）
-from core.registry import AppContext, PluginManager  # 插件装载与工具注册
 
 if TYPE_CHECKING:  # 类型检查期才导入 App，运行期由参数传入
     from tui.app import XiumiAgentApp

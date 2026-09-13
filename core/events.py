@@ -19,7 +19,6 @@ _logger = get_logger(__name__)
 class EventType(Enum):
     """事件类型枚举：全系统合法事件的封闭集合，载荷字段见 Event 注释。"""
 
-    STATUS = "status"                  # 状态提示 {text, error}
     CHAT = "chat"                      # 对话消息 {role, text}
     ACTION = "action"                  # 工具调用开始 {name, args}
     TOOL_RESULT = "tool_result"        # 工具调用结束 {name, result}
@@ -32,7 +31,7 @@ class EventType(Enum):
 class Event:
     """事件 DTO：类型枚举 + 强类型载荷字段（按事件类型取用，默认空值）。
 
-    属性：type 分发键；text/error STATUS 用；role CHAT 用；
+    属性：type 分发键；text/role CHAT 用；
     name/args/result ACTION 与 TOOL_RESULT 用；path SCREENSHOT 用；
     ok/message TASK_DONE 用。
     生命周期：emit() 构造 → 总线同步分发全部订阅者 → 废弃。
@@ -40,7 +39,6 @@ class Event:
 
     type: EventType
     text: str = ""
-    error: bool = False
     role: str = ""
     name: str = ""
     args: dict = field(default_factory=dict)

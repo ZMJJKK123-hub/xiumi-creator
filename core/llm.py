@@ -37,10 +37,6 @@ class LLMClient:
             default_headers=headers,
         )
 
-    async def chat(self, messages: list[dict], tools: list[dict] | None = None) -> dict:
-        """非流式对话（兼容入口）。返回标准化消息 dict：{role, content, tool_calls?}。"""
-        return await self.chat_stream(messages, tools)
-
     async def chat_stream(
         self,
         messages: list[dict],

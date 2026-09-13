@@ -13,7 +13,7 @@ from textual.app import ComposeResult  # 布局协议
 from textual.containers import Vertical, VerticalScroll  # 面板与独立滚动视窗
 from textual.widgets import Static  # 文本承载
 
-from tui.theme import ACCENT, BORDER_MUTED, GRAY  # 主题色
+from tui.theme import ACCENT, GRAY  # 主题色
 
 # 刷新节流间隔（秒）：流式增量攒批渲染
 REFRESH_S = 0.06
@@ -28,7 +28,7 @@ class ThinkingPanel(Vertical):
     """
 
     can_focus = False
-    DEFAULT_CLASSES = "think-panel streaming"
+    DEFAULT_CLASSES = "think-panel"
 
     def __init__(self) -> None:
         """初始化文本缓冲与计时（子部件引用在 on_mount 后可用）。"""
@@ -55,7 +55,7 @@ class ThinkingPanel(Vertical):
 
     def _switch(self, state: str) -> None:
         """切换形态：移除全部状态类后挂目标类（CSS 控制显隐与高度）。"""
-        for cls in ("streaming", "collapsed", "expanded", "tall"):
+        for cls in ("collapsed", "expanded", "tall"):
             self.remove_class(cls)
         self.add_class(state)
 
