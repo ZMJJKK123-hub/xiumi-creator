@@ -95,8 +95,13 @@ class ThinkingPanel(Vertical):
             self._scroll.call_after_refresh(self._scroll.scroll_end, animate=False)
 
     def end_round(self, interrupted: bool = False) -> None:
-        """思考轮结束：最终渲染并收起为一行提示。"""
+        """思考轮结束：无思考内容则移除面板；否则收起为一行提示。"""
         self._in_round = False
+        if not self._buf.strip():
+            import asyncio  # 局部导入：移除协程派发
+
+            asyncio.get_running_loop().create_task(self._remove_self())  # 模型未思考：不留空面板
+            return
         self._refresh(pin=True)
         if self._status is None:
             return
@@ -106,8 +111,14 @@ class ThinkingPanel(Vertical):
         )
         self._switch("collapsed")
 
+    async def _remove_self(self) -> None:
+        """从消息流中移除自身（无思考内容时调用）。"""
+        await self.remove()
+
     def toggle(self) -> None:
-        """ctrl+o：收起 ⇄ 展开（展开后从头阅读）。"""
+        """ctrl+o：收起 ⇄ 展开（展开后从头阅读；已移除的面板忽略）。"""
+        if self.parent is None:
+            return
         if self.has_class("collapsed"):
             self._switch("expanded")
             self.add_class("tall")

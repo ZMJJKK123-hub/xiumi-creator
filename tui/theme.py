@@ -12,6 +12,7 @@ BG = "#0C0C0C"            # 全局背景
 SURFACE = "#161616"       # 模态屏/浮层底色
 USER_BAR_BG = "#2A2A2A"   # 用户命令条背景
 BORDER_MUTED = "#4a4a52"  # 常态边框（登录框/输入框/按钮）
+INPUT_BORDER = "#cfcfcf"  # 输入框边框（浅白，替代填色背景）
 
 VERSION = "v0.2.0"        # 应用版本号：xiumi version / 欢迎卡标题共用
 
@@ -47,11 +48,12 @@ Screen {{ background: {BG}; }}
     display: none; height: auto; margin: 0 1;
     background: #101010; border: round {BORDER_MUTED}; padding: 0 1;
 }}
-#rule-top, #rule-bot {{ color: {GRAY}; margin: 0 1; }}
-#input-box {{ height: auto; padding: 0 1; }}
 #prompt-sym {{ width: auto; color: {GRAY}; padding: 0 0 0 1; }}
+#input-box {{ height: auto; padding: 0 1; border: round {INPUT_BORDER}; }}
 #task {{ border: none; background: transparent; height: 1; padding: 0; }}
 #task:focus {{ background-tint: transparent; }}
+#task .input--cursor {{ background: {ACCENT}; color: {BG}; }}
+#task .input--selection {{ background: {ACCENT} 40%; }}
 #footer {{ height: 1; padding: 0 2; }}
 #hint {{ width: auto; height: 1; color: {GRAY}; }}
 #help-box {{ border: round {ACCENT}; background: {SURFACE}; padding: 1 2; margin: 4 12; width: 76; }}

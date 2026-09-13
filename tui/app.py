@@ -11,7 +11,7 @@ from textual.binding import Binding  # 带优先级的键位绑定（Tab 补全�
 from textual.app import App, ComposeResult  # 应用基类与布局协议
 from textual.css.query import NoMatches  # 拆除期部件查询异常（欢迎卡刷新兜底）
 from textual.containers import Horizontal  # 输入框/状态栏横向容器
-from textual.widgets import Input, Rule, Static  # 基础组件
+from textual.widgets import Input, Static  # 基础组件
 
 from cdp.browser import EdgeBrowser  # 自动化浏览器生命周期
 from core.config import Config, XIUMI_HOME, load_config  # 配置解析与数据目录
@@ -89,11 +89,9 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
         yield Transcript(id="transcript")
         yield Static("", id="spinner")
         yield Static("", id="suggest-box")
-        yield Rule(id="rule-top")
         with Horizontal(id="input-box"):
             yield Static("> ", id="prompt-sym")
             yield Input(placeholder='Try "写一篇秋天咖啡店探店推文"', id="task")
-        yield Rule(id="rule-bot")
         yield Horizontal(
             Static("", id="hint"),
             id="footer",
