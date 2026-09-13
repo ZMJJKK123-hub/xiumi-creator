@@ -3,7 +3,7 @@
 Rule2 §4 契约优先：事件以 Event dataclass 传递，禁止裸 dict/裸 kwargs；
 订阅端按 EventType 分发，载荷字段在类定义中显式声明。
 """
-from __future__ import annotations
+from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 
 import asyncio  # iscoroutine 判断，支持异步/同步订阅者混合分发
 from dataclasses import dataclass, field  # dataclass 构建事件 DTO；field 提供容器默认值
@@ -17,7 +17,12 @@ _logger = get_logger(__name__)
 
 
 class EventType(Enum):
-    """事件类型枚举：全系统合法事件的封闭集合，载荷字段见 Event 注释。"""
+    """事件类型枚举：全系统合法事件的封闭集合。
+
+    类职责：强类型事件路由键，杜绝魔法字符串。
+    属性：各成员即事件种类（值用于日志）。
+    生命周期：Event 构造时取用，随 Event 废弃。
+    """
 
     CHAT = "chat"                      # 对话消息 {role, text}
     ACTION = "action"                  # 工具调用开始 {name, args}
@@ -31,6 +36,7 @@ class EventType(Enum):
 class Event:
     """事件 DTO：类型枚举 + 强类型载荷字段（按事件类型取用，默认空值）。
 
+    类职责：单一强类型载体，跨层传递事件载荷。
     属性：type 分发键；text/role CHAT 用；
     name/args/result ACTION 与 TOOL_RESULT 用；path SCREENSHOT 用；
     ok/message TASK_DONE 用。
@@ -76,6 +82,7 @@ class EventBus:
         """退订；未注册时仅记 DEBUG（屏卸载允许重复退订）。
 
         Globals Used: None。Calls: list.remove。
+        Args: event_type 目标事件；handler 回调。Returns: None。
         """
         try:
             self._subs.get(event_type, []).remove(handler)

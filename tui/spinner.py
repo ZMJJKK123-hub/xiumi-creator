@@ -3,7 +3,7 @@
 数据与渲染分离：帧序列取自 Claude Code 实际行为（调研确认）；
 动词固定为 thinking（用户指定，不再随机轮换）。
 """
-from __future__ import annotations
+from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 
 import time  # 计算任务已耗时秒数
 
@@ -24,7 +24,7 @@ BUSY_TIP = "└ Tip: esc 中断当前任务，已完成的步骤不会回滚"
 class SpinnerState:
     """spinner 帧状态机。
 
-    职责：维护当前帧索引，按 tick 推进并渲染富文本行。
+    类职责：维护当前帧索引，按 tick 推进并渲染富文本行。
     属性：frame_idx 当前帧下标。
     生命周期：App 构造创建，每 0.12s tick 一次，任务结束停用。
     """
@@ -33,14 +33,11 @@ class SpinnerState:
         self.frame_idx: int = 0
 
     def tick(self) -> None:
-        """推进一帧。
-
-        Args: None。Returns: None。Globals Used: None（FRAMES 为模块常量）。
-        """
+        """推进一帧。Globals Used: FRAMES。Calls: 无。Args: None。Returns: None。"""
         self.frame_idx = (self.frame_idx + 1) % len(FRAMES)
 
     def render(self, started_at: float) -> Text:
-        """渲染当前 spinner 双行文本。
+        """渲染当前 spinner 双行文本。Globals Used: FRAMES/VERB/BUSY_TIP。Calls: 无。
 
         Args: started_at 任务开始时间戳（time.time）。Returns: 两行 Text，
         第一行 `✶ thinking... (12s)`，第二行 esc 中断提示。

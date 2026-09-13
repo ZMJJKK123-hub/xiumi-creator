@@ -3,7 +3,7 @@
 库内容以 window.__agent 挂载：outline/click/type/press/find/findByText/
 getText/focusEnd/pasteHTML/appendHTML/editorInsert/editorInfo/triggerChange。
 """
-from __future__ import annotations
+from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 
 import json  # 构造 __agent.fn(args) 调用表达式
 from pathlib import Path  # 定位包内资源文件
@@ -25,6 +25,7 @@ def load_agent_js() -> str:
 def call_expr(fn: str, *args) -> str:
     """生成 window.__agent.fn(arg1, ...) 调用表达式。
 
+    Globals Used: None。Calls: json.dumps（参数序列化）。
     Args: fn __agent 方法名; args JSON 可序列化实参。
     Returns: str JS 表达式。
     """

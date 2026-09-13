@@ -1,5 +1,5 @@
 """Agent 主循环：LLM function calling → 插件工具执行 → 结果回填。"""
-from __future__ import annotations
+from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 
 import json  # 工具参数 JSON 解析与结果序列化
 import time  # 任务计时

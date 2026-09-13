@@ -5,21 +5,23 @@
 - pip 安装运行（site-packages）：数据放 ~/.xiumi-agent/，首次运行自动生成 .env 模板；
 - 可用环境变量 XIUMI_HOME 覆盖数据目录。
 """
-from __future__ import annotations
+from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 
-import os
-from dataclasses import dataclass
-from pathlib import Path
+import os  # 环境变量读取
+from dataclasses import dataclass  # Config DTO
+from pathlib import Path  # 数据目录与 Edge 路径类型
 
-from dotenv import load_dotenv
+from dotenv import load_dotenv  # .env 加载
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent  # 安装模式下是 site-packages
 # 源码目录必有 pyproject.toml；wheel 只装声明的包与模块，不会带上它
 IS_DEV = (PROJECT_ROOT / "pyproject.toml").exists()
+# 数据目录：环境变量 XIUMI_HOME 优先；源码运行=项目根，pip 安装=用户主目录
 XIUMI_HOME = Path(os.getenv("XIUMI_HOME", "")) if os.getenv("XIUMI_HOME", "") else (
     PROJECT_ROOT if IS_DEV else Path.home() / ".xiumi-agent"
 )
 
+# Edge 可执行文件常见安装路径（探测顺序即列表顺序）
 _EDGE_CANDIDATES = [
     r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
     r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
@@ -43,7 +45,11 @@ MAX_STEPS=40
 
 
 def detect_edge() -> str | None:
-    """按 环境变量 → 常见路径 → LOCALAPPDATA 顺序探测 Edge。"""
+    """探测 Edge 可执行文件路径。
+
+    Globals Used: _EDGE_CANDIDATES（候选路径表）。Calls: Path.exists。
+    Args: None。Returns: 可执行文件路径；找不到返回 None。
+    """
     env = os.getenv("EDGE_PATH", "").strip('"')
     if env and Path(env).exists():
         return env
@@ -60,6 +66,15 @@ def detect_edge() -> str | None:
 
 @dataclass
 class Config:
+    """全局配置 DTO：LLM / 浏览器 / Agent 三组参数。
+
+    类职责：强类型承载全部可配置项，杜绝裸 dict 传参。
+    属性：base_url/api_key/model LLM 三要素；edge_path/cdp_port/profile_dir
+        浏览器参数；screenshots_dir 截图目录；max_steps 工具循环上限；
+        tool_result_max_chars 工具结果截断阈值。
+    生命周期：load_config 构造 → 全程只读注入 → /model 保存后重建。
+    """
+
     # LLM
     base_url: str
     api_key: str
@@ -75,12 +90,21 @@ class Config:
 
     @property
     def llm_ready(self) -> bool:
-        """key、接口地址、模型名三者齐备才算就绪（模型由 /model 设置，无默认值）。"""
+        """LLM 三要素是否齐备（模型由 /model 设置，无默认值）。
+
+        Globals Used: None。Calls: 无。
+        Args: None。Returns: 是否就绪。
+        """
         return bool(self.api_key) and bool(self.base_url) and bool(self.model)
 
 
 def persist_env(key: str, value: str) -> Path:
-    """把单个配置项写回生效中的 .env（不存在则先落模板）。返回 env 文件路径。"""
+    """把单个配置项写回生效中的 .env（不存在则先落模板）。
+
+    Globals Used: XIUMI_HOME / PROJECT_ROOT / IS_DEV / ENV_TEMPLATE。
+    Calls: Path.read_text / Path.write_text。
+    Args: key 配置键; value 配置值。Returns: env 文件路径。
+    """
     env_file = XIUMI_HOME / ".env"
     if not env_file.exists() and IS_DEV:
         legacy = PROJECT_ROOT / ".env"
@@ -105,6 +129,12 @@ def persist_env(key: str, value: str) -> Path:
 
 
 def load_config() -> Config:
+    """装载并构造全局配置。
+
+    Globals Used: XIUMI_HOME / PROJECT_ROOT / IS_DEV / detect_edge。
+    Calls: load_dotenv / detect_edge / Config 构造。
+    Args: None。Returns: Config 实例。
+    """
     # .env 发现顺序：数据目录 → （dev 模式）项目根
     env_file = XIUMI_HOME / ".env"
     if not env_file.exists() and IS_DEV:

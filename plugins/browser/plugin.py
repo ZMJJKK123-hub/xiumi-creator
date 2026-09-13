@@ -3,7 +3,7 @@
 Rule1 §6.2：一工具一工厂，新增工具加函数即可（OCP）；
 全部操作经 _tab_for 支持主标签页与后台工具箱双目标。
 """
-from __future__ import annotations
+from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 
 import asyncio  # 交互后短暂等待页面反应
 import json  # exec_js 结果序列化
@@ -200,6 +200,7 @@ class BrowserPlugin(Plugin):
     def tools(self, ctx: AppContext) -> list[Tool]:
         """汇总全部工具声明。
 
+        Globals Used: 各 _t_* 工厂。Calls: 无（纯装配）。
         Args: ctx 上下文（本插件不使用）。Returns: Tool 列表。
         """
         return [_t_navigate(), _t_outline(), _t_click(), _t_type(), _t_press(), _t_exec(), _t_capture(), _t_get_text()]

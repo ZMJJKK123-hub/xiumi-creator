@@ -3,7 +3,7 @@
 Rule2 §1 表现层组件；颜色常量在 theme，纯算法在 textutils，
 欢迎卡内容构建在 welcome——本文件只保留组件本身。
 """
-from __future__ import annotations
+from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 
 import re  # 助手回复按空行分段
 
@@ -20,6 +20,7 @@ from tui.welcome import build_title, build_welcome  # 欢迎卡标题与内容�
 class WelcomeCard(Static):
     """常驻欢迎卡：铺满宽度、随窗口 resize 自动重排、模型名即时刷新。
 
+    类职责：承载欢迎信息与命令速查，宽度变化时实时重建。
     类变量：can_focus=False（焦点恒留输入框）。
     实例：_model 当前模型文案；render 按卡内宽度实时构建内容。
     生命周期：compose 创建；set_model 由 boot 与配置屏保存调用。
@@ -40,13 +41,14 @@ class WelcomeCard(Static):
     def set_model(self, model: str) -> None:
         """更新模型显示文案并触发重排。
 
+        Globals Used: None。Calls: refresh(layout)。
         Args: model 模型显示文案。Returns: None。
         """
         self._model = model
         self.refresh(layout=True)
 
     def on_resize(self, event: events.Resize) -> None:
-        """窗口尺寸变化：宽度实际变化时才重排（防高度抖动循环）。"""
+        """窗口尺寸变化：宽度实际变化时才重排（防高度抖动循环）。Calls: refresh。Args: event 尺寸事件。Returns: None。"""
         if event.size.width != self._last_w:
             self._last_w = event.size.width
             self.refresh(layout=True)
@@ -64,7 +66,10 @@ class WelcomeCard(Static):
             return 80
 
     def render(self):
-        """按当前卡内宽度构建内容（每次刷新重算，保证 resize 跟随）。"""
+        """按当前卡内宽度构建内容（每次刷新重算，保证 resize 跟随）。
+
+        Globals Used: None。Calls: build_welcome / _width。Args: None。Returns: rich 渲染对象。
+        """
         return build_welcome(self._model, self._width())
 
 
@@ -73,6 +78,7 @@ class WelcomeCard(Static):
 class Transcript(VerticalScroll):
     """消息流容器：每条消息独立部件，思考面板可内联挂载。
 
+    类职责：按序呈现全部会话内容，贴底自动跟随滚动。
     类变量：can_focus=False（焦点恒留输入框）。
     实例：写入时若原本贴底则自动跟随滚动；用户上翻查看历史时不打扰。
     生命周期：compose 创建，App 全程复用；clear 由 ctrl+l 调用。
@@ -93,7 +99,7 @@ class Transcript(VerticalScroll):
             return 80
 
     def _pinned(self) -> bool:
-        """当前是否贴底（决定写入后是否跟随滚动）。"""
+        """当前是否贴底（决定写入后是否跟随滚动）。Args: None。Returns: bool。"""
         return self.scroll_y >= self.max_scroll_y - 1
 
     def _emit(self, content, cls: str | None = None) -> None:
@@ -109,13 +115,18 @@ class Transcript(VerticalScroll):
     def mount_thinking(self, panel) -> None:
         """内联挂载思考面板（跟在最新消息之后）并滚动进视野。
 
+        Globals Used: None。Calls: mount / scroll_end。
+
         Args: panel ThinkingPanel 实例。Returns: None。
         """
         self.mount(panel)
         self.call_after_refresh(self.scroll_end, animate=False)
 
     def texts(self) -> list[str]:
-        """全部消息文本快照（rich Text 归一为纯文本；测试与取证用）。"""
+        """全部消息文本快照（rich Text 归一为纯文本；测试与取证用）。
+
+        Globals Used: None。Calls: 无（遍历子部件）。Args: None。Returns: str 列表。
+        """
         out: list[str] = []
         for child in self.children:
             if isinstance(child, Static):
@@ -124,11 +135,13 @@ class Transcript(VerticalScroll):
         return out
 
     def clear(self) -> None:
-        """清空全部消息部件（ctrl+l 清屏）。"""
+        """清空全部消息部件（ctrl+l 清屏）。Calls: remove_children。Args: None。Returns: None。"""
         self.remove_children()
 
     def write_user(self, text: str) -> None:
         """用户命令条：白色圆角边框 + 透明底（无填充，杜绝终端渲染差异）+ 尾随空行。
+
+        Globals Used: None。Calls: fold_multiline / truncate_cells / _emit。
 
         Args: text 用户原始输入。Returns: None。
         """
@@ -139,6 +152,8 @@ class Transcript(VerticalScroll):
 
     def write_assistant(self, text: str) -> None:
         """助手回复：按空行分段，每个文本块一个 ⏺ 前缀（与 Claude Code 语义一致）。
+
+        Globals Used: None。Calls: re.split / _emit。
 
         Args: text 回复文本。Returns: None。
         """
@@ -169,6 +184,8 @@ class Transcript(VerticalScroll):
     def write_result(self, name: str, result: str) -> None:
         """工具结果行：两格缩进 └，灰字；空结果显 (no content)；错误红字；超两行折叠。
 
+        Globals Used: None。Calls: truncate_cells / _emit。
+
         Args: name 工具名（日志定位用）; result 结果文本。Returns: None。
         """
         lines = result.rstrip().splitlines() if result.strip() else ["(no content)"]
@@ -183,6 +200,7 @@ class Transcript(VerticalScroll):
     def write_system(self, text: str) -> None:
         """系统提示：└ 灰字；⚠/❌ 前缀错误转红色 X 行。
 
+        Globals Used: None。Calls: _emit。
         Args: text 提示文本。Returns: None。
         """
         stripped = text.rstrip()
@@ -199,7 +217,7 @@ class Transcript(VerticalScroll):
     def write_tool_note(self, text: str) -> None:
         """轻量附注行（截图路径等）：两格缩进 └ 灰字。
 
-        Args: text 附注文本。Returns: None。
+        Globals Used: None。Calls: _emit。Args: text 附注文本。Returns: None。
         """
         self._emit(Text("  └ " + text, style=GRAY))
 

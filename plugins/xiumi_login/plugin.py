@@ -3,7 +3,7 @@
 登录由用户在浏览器窗口自行完成（滑块/扫码均可），
 /login 命令只负责弹出官网、轮询检测、回报结果。
 """
-from __future__ import annotations
+from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 
 import asyncio  # 轮询间隔与超时
 import json  # 选择器转义
@@ -15,7 +15,7 @@ from core.registry import AppContext, Plugin, Tool  # 插件契约
 from pathlib import Path  # 选择器文件定位
 
 _logger = get_logger(__name__)
-_HERE = Path(__file__).parent
+_HERE = Path(__file__).parent  # 插件目录（selectors.json 所在地）
 
 # 登录判定等待页面渲染的最长秒数
 _RENDER_TIMEOUT = 8.0
@@ -47,6 +47,7 @@ async def _wait_rendered(tab: Tab, timeout: float = _RENDER_TIMEOUT) -> bool:
 async def check_login(ctx: AppContext, navigate: bool = True) -> bool:
     """登录态检查：/auth 子页直接判未登录，其余等渲染后按文本启发式。
 
+    Globals Used: None。Calls: tab.current_url / navigate / evaluate。
     Args: ctx 上下文; navigate 是否先导航到首页。Returns: 是否已登录。
     """
     tab = ctx.require_tab()
@@ -82,17 +83,22 @@ async def _tool_login_check(ctx: AppContext, args: dict) -> str:
 
 
 class XiumiLoginPlugin(Plugin):
-    """登录检查插件：登录动作本身由 /login 命令与用户协作完成。"""
+    """登录检查插件：登录动作本身由 /login 命令与用户协作完成。
+
+    类职责：提供登录态检查动作（TUI 轮询用）与同名 LLM 工具。
+    属性：name/description 插件元信息。
+    生命周期：PluginManager 装载 → actions/tools 被收集 → 全程只读。
+    """
 
     name = "xiumi_login"
     description = "秀米登录态检查工具；登录由用户在浏览器完成"
 
     def actions(self, ctx: AppContext) -> dict:
-        """暴露登录态检查动作。Args: ctx。Returns: 动作表。"""
+        """暴露登录态检查动作。Calls: check_login。Args: ctx。Returns: 动作表。"""
         return {"xiumi_login.check": lambda: check_login(ctx)}
 
     def tools(self, ctx: AppContext) -> list[Tool]:
-        """注册登录检查工具。Args: ctx。Returns: 工具列表。"""
+        """注册登录检查工具。Calls: Tool 构造。Args: ctx。Returns: 工具列表。"""
         return [
             Tool(
                 name="xiumi_login_check",

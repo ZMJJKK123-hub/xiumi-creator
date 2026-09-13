@@ -3,7 +3,7 @@
 Rule2 §5 基线：应用内禁止 print 追踪运行轨迹，统一经 get_logger() 获取 logger；
 级别语义 DEBUG/INFO/WARNING/ERROR；日志文件位于 XIUMI_HOME/logs/app.log。
 """
-from __future__ import annotations
+from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 
 import logging  # 标准日志框架，提供 Logger/Handler/格式化能力
 import logging.handlers  # RotatingFileHandler，按大小滚动防止日志无限增长
@@ -13,8 +13,8 @@ from pathlib import Path  # 路径类型，用于拼接日志目录
 _configured: bool = False
 
 # 单文件 1MB，保留 3 个历史滚动文件
-_MAX_BYTES = 1 * 1024 * 1024
-_BACKUP_COUNT = 3
+_MAX_BYTES = 1 * 1024 * 1024  # 单个日志文件上限（1MB）
+_BACKUP_COUNT = 3  # 滚动备份保留份数
 
 # 统一格式：时间 | 级别 | 模块 | 消息
 _FORMAT = "%(asctime)s | %(levelname)-7s | %(name)s | %(message)s"

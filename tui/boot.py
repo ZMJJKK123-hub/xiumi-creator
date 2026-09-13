@@ -2,7 +2,7 @@
 
 Rule2 §1 业务编排独立于 App 表现层；boot 失败经 App 的提示通道上报。
 """
-from __future__ import annotations
+from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 
 from typing import TYPE_CHECKING  # 仅类型标注使用宿主，避免运行期循环导入
 
@@ -17,10 +17,11 @@ if TYPE_CHECKING:  # 类型检查期才导入 App，运行期由参数传入
 
 
 async def boot(app: "XiumiAgentApp") -> None:
-    """执行完整启动链路。
+    """执行完整启动链路：配置 → 日志 → 浏览器 → 插件 → 登录态报告。
 
-    Globals Used: None（状态全部挂 app 实例）。
-    Calls: _load_and_log / _start_browser / _check_login / _report_login_state。
+    Globals Used: XIUMI_HOME（日志目录）。
+    Calls: load_config / setup_logging / _start_browser / _check_login / _report_login_state。
+    Args: app 宿主。Returns: None。
     """
     app.config = load_config()
     app.ctx.config = app.config  # 保持上下文与宿主持有同一份配置

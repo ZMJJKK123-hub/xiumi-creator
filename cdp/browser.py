@@ -1,32 +1,47 @@
 """Edge 启动与标签页管理（独立自动化 profile）。"""
-from __future__ import annotations
+from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 
-import subprocess
-from typing import Any
+import subprocess  # 拉起 Edge 进程
+from typing import Any  # 通用类型标注
 
 from core.config import Config  # Edge 路径/端口/数据目录配置
 from core.log import get_logger  # 边界异常记录
 
-from .connection import CDPConnection
-from .helpers import Tab
+from .connection import CDPConnection  # 浏览器级 CDP 连接
+from .helpers import Tab  # 标签页高级封装
 
 
 class BrowserNotReady(RuntimeError):
+    """浏览器未就绪错误。
+
+    类职责：标记 Edge 未启动/未连接的边界状态，供上层给出可读提示。
+    属性：无附加。生命周期：raise 即弃。
+    """
+
     pass
 
 
 class EdgeBrowser:
+    """Edge 浏览器生命周期与标签页管理。
+
+    类职责：启动/复用自动化 Edge（独立 profile + 调试端口），收敛到单标签页。
+    属性：config 注入的配置；cdp 浏览器级连接；_proc 拉起的 Edge 进程。
+    生命周期：boot 构造 → ensure_started/connect → get_or_create_tab 取页 → shutdown 回收。
+    """
+
     def __init__(self, config: Config):
-        self.config = config
-        self.cdp: CDPConnection | None = None
-        self._proc: subprocess.Popen | None = None
+        """Args: config 全局配置（Edge 路径/端口/数据目录）。"""
+        self.config = config  # 全局配置引用
+        self.cdp: CDPConnection | None = None  # 浏览器级 CDP 连接
+        self._proc: subprocess.Popen | None = None  # 自行拉起的 Edge 进程
 
     # ---- 启动 ----
     async def ensure_started(self, start_url: str = "about:blank") -> None:
-        """端口活着就复用已有 Edge；否则用独立 profile 启动一个。
+        """确保自动化 Edge 就绪（端口活着就复用，否则独立 profile 启动）。
 
-        start_url 作为首个标签页地址——传入业务 URL 可同时抑制 Edge 的会话恢复
-        （Chromium 带 cmdline URL 时不恢复上次标签，避免攒出空页）。
+        Globals Used: None。Calls: _port_alive / subprocess.Popen / connect。
+        Args: start_url 首标签页地址（传业务 URL 可抑制会话恢复攒空页）。
+        Returns: None；启动失败 raise BrowserNotReady。
         """
         if await self._port_alive():
             return
@@ -57,6 +72,7 @@ class EdgeBrowser:
         raise BrowserNotReady(f"Edge 调试端口 {self.config.cdp_port} 未就绪")
 
     async def _port_alive(self) -> bool:
+        """探测调试端口是否已有浏览器。Args: None。Returns: 是否存活。"""
         probe: CDPConnection | None = None
         try:
             probe = await CDPConnection.connect(self.config.cdp_port, timeout=1.5)
@@ -72,10 +88,15 @@ class EdgeBrowser:
                     pass
 
     async def connect(self) -> None:
+        """建立浏览器级 CDP 连接并预取标签页。Calls: CDPConnection.connect。Args: None。Returns: None。"""
         self.cdp = await CDPConnection.connect(self.config.cdp_port)
 
     # ---- 标签页 ----
     async def _close_extra(self, keep_id: str, url_contains: str) -> None:
+        """关闭多余标签页，收敛到单标签。
+
+        Args: keep_id 保留的 targetId; url_contains URL 含此串也保留。Returns: None。
+        """
         """循环关闭多余标签（空白页 + 同域重复页），保持单一工作标签。
 
         Edge 会话恢复是异步的，需复查到稳定；会话记录随之收敛，
@@ -101,6 +122,12 @@ class EdgeBrowser:
             await asyncio.sleep(0.6)
 
     async def get_or_create_tab(self, url_contains: str = "xiumi.us", default_url: str = "https://xiumi.us/") -> Tab:
+        """取业务标签页：存在则附加，不存在则新建（统一收敛入口）。
+
+        Globals Used: None。Calls: cdp.list_pages / open_tab / attach_tab。
+        Args: url_contains 匹配既有页的 URL 片段; default_url 新建地址。
+        Returns: 就绪的 Tab。
+        """
         """找 url 含 url_contains 的标签页；没有则复用/新建一个，并收敛到单一工作标签。"""
         if not self.cdp:
             raise BrowserNotReady("CDP 未连接")
@@ -128,24 +155,32 @@ class EdgeBrowser:
         return tab
 
     async def open_tab(self, url: str) -> Tab:
+        """新建标签页并返回 Tab。Calls: cdp.new_tab / attach_tab。Args: url 初始地址。Returns: Tab。"""
         if not self.cdp:
             raise BrowserNotReady("CDP 未连接")
         page = await self.cdp.new_tab(url)
         return await self.attach_tab(page)
 
     async def attach_tab(self, target_info: dict[str, Any]) -> Tab:
+        """附加到既有 target 构造 Tab。Calls: cdp.attach / Tab 构造。Args: target_info 页面元数据。Returns: Tab。"""
         session_id = await self.cdp.attach(target_info["targetId"])
         tab = Tab(self.cdp, session_id, target_info)
         await tab.enable()
         return tab
 
     async def shutdown(self) -> None:
+        """关闭连接（保留浏览器进程与登录态）。Calls: cdp.close。Args: None。Returns: None。"""
         if self.cdp:
             await self.cdp.close()
             self.cdp = None
 
     # ---- 窗口可见性 ----
     async def set_window_state(self, tab, state: str) -> None:
+        """控制浏览器窗口显隐。
+
+        Globals Used: None。Calls: tab.send(Browser.* )。
+        Args: tab 业务标签页; state normal/minimized。Returns: None。
+        """
         """控制自动化 Edge 主窗口：'minimized'（后台）| 'normal'（前台可见）。
 
         登录/待命时最小化不打扰用户；任务运行或需要人工滑块时调出。

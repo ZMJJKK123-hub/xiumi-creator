@@ -2,7 +2,7 @@
 
 Rule2 §1 交互逻辑独立：过滤/导航/确定决策集中于此，渲染经宿主容器。
 """
-from __future__ import annotations
+from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 
 from dataclasses import dataclass  # 决策 DTO
 
@@ -16,6 +16,12 @@ _PARAM_COMMANDS = {"/file"}
 
 @dataclass
 class SuggestDecision:
+    """提交决策 DTO：补全控制器对 Enter 的裁决结果。
+
+    类职责：强类型封装三态决策（消费与否/补全命令/原样透传）。
+    属性：consumed 是否已消费；command 补全后的命令（可空）；passthrough 原文透传。
+    生命周期：consume_submit 构造 → App 消费即弃。
+    """
     """Enter 确定的决策结果。
 
     属性：consumed 是否已消费本次提交；command 待执行命令名（无参命令确定时非空）。
@@ -47,11 +53,13 @@ class SuggestController:
     # ---- 状态查询 ----
     @property
     def is_open(self) -> bool:
+        """候选面板是否打开。Calls: 无。Args: None。Returns: bool。"""
         """候选面板是否打开。Args: None。Returns: bool。"""
         return self._open
 
     # ---- 输入驱动 ----
     def on_text(self, text: str) -> None:
+        """输入变化刷新候选。Calls: _refresh。Args: text 输入框当前值。Returns: None。"""
         """按输入更新候选：以 / 开头则过滤显示，否则关闭。
 
         Args: text 输入框当前值。Returns: None。
@@ -73,6 +81,7 @@ class SuggestController:
         self._render()
 
     def step(self, delta: int) -> None:
+        """Tab/Shift+Tab 循环切换候选。Calls: _render。Args: delta 步进方向。Returns: None。"""
         """Tab 循环移动高亮。
 
         Args: delta 步进（+1 下一个，-1 上一个）。Returns: None。
@@ -83,6 +92,7 @@ class SuggestController:
         self._render()
 
     def close(self) -> None:
+        """关闭候选面板。Calls: _hide。Args: None。Returns: None。"""
         """关闭面板并复位状态。Args: None。Returns: None。"""
         self._open = False
         self._items, self._index = [], 0
@@ -92,6 +102,7 @@ class SuggestController:
     def consume_submit(self) -> SuggestDecision:
         """处理输入框提交：候选打开时确定当前高亮项。
 
+        Globals Used: None。Calls: close / _hide。
         Args: None。Returns: SuggestDecision（consumed=True 表示已消费；
         command 非空表示应立即执行该命令）。
         """

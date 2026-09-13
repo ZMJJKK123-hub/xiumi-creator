@@ -2,7 +2,7 @@
 
 Rule1 §6.2 OCP：新增命令 = 新增处理器并 register，不改分发核心。
 """
-from __future__ import annotations
+from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 
 from pathlib import Path  # /file 的路径校验
 from typing import Any, Awaitable, Callable  # 处理器与宿主类型标注
@@ -151,11 +151,11 @@ class CommandRouter:
 
     @property
     def command_info(self) -> dict[str, str]:
-        """命令描述表（补全候选用）。Args: None。Returns: name->desc 字典。"""
+        """命令描述表（补全候选用）。Globals Used: COMMAND_INFO。Calls: 无。Args: None。Returns: name->desc 字典。"""
         return COMMAND_INFO
 
     def register(self, name: str, handler: Handler) -> None:
-        """注册新命令（扩展点）。
+        """注册新命令（扩展点）。Globals Used: None。Calls: 无。
 
         Args: name 命令名含斜杠; handler 处理器。Returns: None。
         """
@@ -164,6 +164,7 @@ class CommandRouter:
     async def dispatch(self, app: Any, raw: str) -> bool:
         """尝试按命令分发用户输入。
 
+        Globals Used: None。Calls: 命中处理器（调用方 App.on_input_submitted）。
         Args: app 宿主; raw 原始输入。Returns: True=已消费，不再当任务处理。
         """
         token = raw.split(maxsplit=1)[0] if raw.startswith("/") else ""

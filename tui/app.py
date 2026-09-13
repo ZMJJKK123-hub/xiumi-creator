@@ -1,5 +1,5 @@
 """主应用薄壳：布局组装与事件接线（boot/commands/theme/spinner 各自独立成模块）。"""
-from __future__ import annotations
+from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 
 import asyncio  # _set_window 的异步任务派发
 import time  # 任务计时
@@ -83,7 +83,7 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
         self._tick_timer = None  # spinner 定时器（on_unmount 停表）
 
     def compose(self) -> ComposeResult:
-        """布局：欢迎卡 / 流水（思考面板内联挂载）/ spinner / 候选面板 / 输入框 / 底栏。"""
+        """布局：欢迎卡/流水(思考内联)/spinner/候选/输入框/底栏。Calls: 各部件 yield。Args: None。Returns: 布局生成器。"""
         yield WelcomeCard()
         yield Transcript(id="transcript")
         yield Static("", id="spinner")
@@ -97,19 +97,19 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
         )
 
     def on_mount(self) -> None:
-        """挂载：聚焦输入框、接线事件、启动 boot。"""
+        """挂载：聚焦输入框、接线事件、启动 boot。Calls: set_interval / run_worker。Args: None。Returns: None。"""
         self._wire_events()
         self.query_one("#task", Input).focus()
         self._tick_timer = self.set_interval(0.12, self._tick_spinner)
         self.run_worker(self._boot_task(), thread=False)
 
     def on_unmount(self) -> None:
-        """拆除：停掉 spinner 定时器，避免部件卸载后回调查询。"""
+        """拆除：停 spinner 定时器防回调。Calls: _tick_timer.stop。Args: None。Returns: None。"""
         if self._tick_timer is not None:
             self._tick_timer.stop()
 
     async def _boot_task(self) -> None:
-        """boot worker：调用 tui.boot 编排，结束置位完成标记。"""
+        """boot worker：调用 tui.boot 编排，结束置位完成标记。Args: None。Returns: None。"""
         try:
             await boot(self)
         except asyncio.CancelledError:
@@ -118,7 +118,7 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
             self._boot_done = True
 
     def _wire_events(self) -> None:
-        """订阅系统事件并映射到流水（状态类信息走流水，不占底栏）。"""
+        """订阅系统事件并映射到流水（状态类信息走流水，不占底栏）。Args: None。Returns: None。"""
         bus, t = self.bus, self.transcript()
         bus.on(EventType.CHAT, lambda e: self._chat(e.role, e.text))
         bus.on(EventType.ACTION, lambda e: t.write_action(e.name, e.args))
@@ -128,20 +128,19 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
         bus.on(EventType.TASK_DONE, self._on_task_done)
 
     def _on_task_done(self, event: Event) -> None:
-        """任务结束：解除忙碌并写统计行。"""
+        """任务结束：解除忙碌并写统计行。Args: event 任务完成事件。Returns: None。"""
         self._set_busy(False)
         mark = "✻" if event.ok else "⚠"
         self.transcript().write_system(f"{mark} {event.message}")
 
     # ---- 用户输入 ----
     def on_input_changed(self, event: Input.Changed) -> None:
-        """输入变化：主输入框以 / 开头时刷新候选。"""
+        """输入变化：主输入框以 / 开头时刷新候选。Calls: suggest.on_text。Args: event 输入事件。Returns: None。"""
         if len(self.screen_stack) == 1 and event.input.id == "task":
             self.suggest.on_text(event.value)
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
-        """提交处理：模态屏激活时不处理；候选打开时确定候选；
-        否则回显命令条 → 命令路由 → 未消费则作为任务执行。"""
+        """提交处理：模态屏短路→候选确定→命令路由→任务流。Calls: dispatch/_start_task。Args: event。Returns: None。"""
         if len(self.screen_stack) > 1:
             event.stop()
             return
@@ -163,7 +162,7 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
             self._start_task(raw)
 
     def _can_run_task(self) -> bool:
-        """任务前置校验：忙碌/启动中/LLM/浏览器关卡，逐项给出准确提示。"""
+        """任务前置校验：忙碌/启动中/LLM/浏览器关卡。Args: None。Returns: 是否放行。"""
         if self._busy:
             self._chat("system", "⏳ 上一轮任务还在进行中，esc 可中断")
             return False
@@ -178,7 +177,7 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
         return False
 
     def _start_task(self, task_text: str) -> None:
-        """进入忙碌态，思考面板内联挂到发言之后，启动任务 worker。"""
+        """进入忙碌态并启动任务 worker（思考面板内联挂载）。Args: task_text。Returns: None。"""
         self._set_busy(True)
         self._task_started = time.time()
         self._think = ThinkingPanel()
@@ -187,7 +186,7 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
         self._worker = self.run_worker(self._run_task(task_text, sink), thread=False)
 
     async def _run_task(self, task_text: str, sink: ThinkingSink) -> None:
-        """任务 worker：执行 Agent 循环（总超时兜底），异常与取消均转为用户可见。"""
+        """任务 worker：Agent 循环+总超时兜底，异常转用户可见。Args: task_text; sink。Returns: None。"""
         try:
             await asyncio.wait_for(self.agent.run(task_text, sink=sink), timeout=TASK_TIMEOUT_S)
         except asyncio.CancelledError:
@@ -204,7 +203,7 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
 
     # ---- 忙碌态 ----
     def _set_busy(self, busy: bool) -> None:
-        """切换忙碌态：底栏提示与 spinner（浏览器显隐由登录流程单独管理）。"""
+        """切换忙碌态：底栏提示与 spinner（浏览器显隐由登录流程管理）。Args: busy。Returns: None。"""
         self._busy = busy
         self.query_one("#hint", Static).update(
             Text("esc 中断任务", style=f"bold {ACCENT}") if busy else Text("")
@@ -213,11 +212,11 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
             self.query_one("#spinner", Static).update("")
 
     def _set_window(self, state: str) -> None:
-        """派发浏览器窗口显隐（委托 WindowScheduler）。Args: state 目标状态。"""
+        """派发浏览器窗口显隐（委托 WindowScheduler）。Calls: WindowScheduler.set。Args: state 目标状态。Returns: None。"""
         self._window.set(state)
 
     def _tick_spinner(self) -> None:
-        """定时推进 spinner 并刷新显示（仅忙碌且运行中）。"""
+        """定时推进 spinner 并刷新显示（仅忙碌且运行中）。Args: None。Returns: None。"""
         if not self._busy or not self.is_running:
             return
         self.spinner.tick()
@@ -225,10 +224,12 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
 
     # ---- 通道：命令路由与模态屏的调用面 ----
     def transcript(self) -> Transcript:
+        """取流水部件。Calls: query_one。Args: None。Returns: Transcript。"""
         """获取流水组件。"""
         return self.query_one("#transcript", Transcript)
 
     def _chat(self, role: str, text: str) -> None:
+        """按角色写入流水。Args: role; text。Returns: None。"""
         """按角色写入流水。Args: role user/assistant/system; text 文本。"""
         t = self.transcript()
         if role == "user":

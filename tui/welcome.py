@@ -3,7 +3,7 @@
 Rule2 §1 表现层构建逻辑独立成模块；边框由 widgets.WelcomeCard 的 CSS 提供，
 此处只产出卡内内容，宽度由部件传入，resize 时部件重算。
 """
-from __future__ import annotations
+from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 
 from rich.align import Align  # 居中对齐包装
 from rich.box import Box  # 自定义 box 字符集（双栏分隔线）
@@ -45,6 +45,7 @@ _INNER_DIVIDER = Box(
 def build_title() -> str:
     """卡片边框标题：纯文本，颜色由 CSS border-title-color 统一渲染。
 
+    Globals Used: VERSION。Calls: 无。
     Args: None。Returns: str 标题文本（赋给 WelcomeCard.border_title）。
     """
     return f" xiumi-agent {VERSION}"
@@ -81,6 +82,7 @@ def _ref_width(width: int) -> int:
 
 
 def build_welcome(model: str, width: int):
+    """构建卡内内容（双栏/简版）。Globals Used: QUICKREF/MASCOT_ART。Calls: hanging_bullets。Args/Returns 见下。"""
     """构建卡内内容：宽终端双栏（欢迎/速查），窄终端简版。
 
     Args: model 模型显示文案; width 卡内可用宽度（格）。

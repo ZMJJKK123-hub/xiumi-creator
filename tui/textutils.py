@@ -2,7 +2,7 @@
 
 Rule2 §1 纯计算无副作用，不依赖任何 UI 框架，可独立单测。
 """
-from __future__ import annotations
+from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 
 from rich.cells import cell_len  # 计算字符串显示宽度（CJK 一字两格）
 from rich.text import Text  # 富文本对象，输出带样式行
@@ -11,6 +11,7 @@ from rich.text import Text  # 富文本对象，输出带样式行
 def truncate_cells(line: str, max_cells: int) -> str:
     """按显示宽度截断，截断后含省略号且不超过 max_cells。
 
+    Globals Used: None。Calls: rich.cell_len。
     Args: line 原始行; max_cells 目标显示宽度上限。
     Returns: 截断后的字符串，超宽时以 … 结尾。
     """
@@ -27,6 +28,7 @@ def truncate_cells(line: str, max_cells: int) -> str:
 def fold_multiline(text: str) -> tuple[str, int]:
     """把多行任务文本折叠为单行摘要。
 
+    Globals Used: None。Calls: 无。
     Args: text 原始多行文本。Returns: (摘要行, 非空行数)。
     多行时摘要为首行 + 行数标记，如 `# 示例  ⏎ …(16 行)`。
     """
@@ -39,6 +41,7 @@ def fold_multiline(text: str) -> tuple[str, int]:
 def hanging_bullets(items: list[str], width_cells: int = 40) -> list[Text]:
     """把条目列表按显示宽度折行，首行加 · 前缀、续行两格缩进。
 
+    Globals Used: None。Calls: truncate_cells。
     Args: items 原始条目（可带或省略 · 前缀）; width_cells 目标显示宽度。
     Returns: 每条目若干 Text 行的列表，白色样式。
     """

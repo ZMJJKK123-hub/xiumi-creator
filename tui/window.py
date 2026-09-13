@@ -1,5 +1,5 @@
 """浏览器窗口可见性调度：登录等待时弹出，登录结束/取消后收回；任务全程保持后台。"""
-from __future__ import annotations
+from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 
 import asyncio  # 异步任务派发
 from typing import TYPE_CHECKING  # 仅类型标注
@@ -28,7 +28,7 @@ class WindowScheduler:
         self._log = get_logger("window")
 
     def set(self, state: str) -> None:
-        """派发窗口状态切换（normal/minimized）。
+        """派发窗口状态切换（normal/minimized）。Calls: set_window_state（后台任务）。
 
         Args: state 目标窗口状态。Returns: None。
         """

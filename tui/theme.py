@@ -2,7 +2,7 @@
 
 Rule2 §1 表现层配置与组件逻辑物理分离；改主题只动这一个文件。
 """
-from __future__ import annotations
+from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 
 ACCENT = "#E06C38"        # 主色：暖橙，用于标题/焦点边框/spinner/按钮 hover
 DIM_ACCENT = "#a8542f"    # 暗橙：欢迎卡双栏分隔线

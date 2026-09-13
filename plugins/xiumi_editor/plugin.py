@@ -3,23 +3,32 @@
 新建草稿 / 设标题 / 插入排版 HTML / 插入本地图片 / 保存 / 预览截图 / 复制到公众号。
 选择器见同目录 selectors.json（recon.py 踩点后更新）。
 """
-from __future__ import annotations
+from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 
-import asyncio
-import json
-import time
-from pathlib import Path
+import asyncio  # 保存前等待与轮询
+import json  # 选择器加载
+import time  # 预览文件命名
+from pathlib import Path  # 截图路径类型
 
-from core.registry import AppContext, Plugin, Tool
+from core.registry import AppContext, Plugin, Tool  # 插件契约与上下文
 
-HERE = Path(__file__).parent
+HERE = Path(__file__).parent  # 插件目录（selectors.json 所在地）
 
 
 def _selectors() -> dict:
+    """读取插件选择器表。
+
+    Args: None。Returns: selectors.json 解析后的 dict。
+    """
     return json.loads((HERE / "selectors.json").read_text(encoding="utf-8"))
 
 
 def _shot_path(ctx: AppContext, name: str | None) -> Path:
+    """解析预览截图落盘路径。
+
+    Args: ctx 上下文（取截图目录）; name 自定义文件名（None 自动命名）。
+    Returns: 绝对 Path（.png 后缀）。
+    """
     path = Path(name) if name else Path(time.strftime("preview_%H%M%S.png"))
     if not path.is_absolute():
         path = ctx.config.screenshots_dir / path
@@ -27,6 +36,10 @@ def _shot_path(ctx: AppContext, name: str | None) -> Path:
 
 
 async def _new_draft(ctx: AppContext, args: dict) -> str:
+    """新建图文草稿并设置标题。
+
+    Args: ctx 上下文; args 含 title。Returns: 结果文本（失败以 ERROR 开头）。
+    """
     sel = _selectors()
     tab = ctx.require_tab()
     title = str(args.get("title", "未命名图文")).strip()
@@ -53,7 +66,10 @@ async def _new_draft(ctx: AppContext, args: dict) -> str:
 
 
 async def _set_title_inner(ctx: AppContext, title: str) -> None:
-    """按 选择器 → placeholder 文本 两条路径找标题输入框。"""
+    """按 选择器 → placeholder 文本 两条路径设置标题。
+
+    Args: ctx 上下文; title 标题文本。Returns: None；找不到输入框 raise。
+    """
     tab = ctx.require_tab()
     sel = _selectors()
     found = await tab.agent("find", sel["title_input"], 3)
@@ -65,6 +81,7 @@ async def _set_title_inner(ctx: AppContext, title: str) -> None:
 
 
 async def _set_title(ctx: AppContext, args: dict) -> str:
+    """xiumi_set_title 处理器：设置草稿标题。Args: ctx; args 含 title。Returns: 结果文本。"""
     title = str(args["title"]).strip()
     await _set_title_inner(ctx, title)
     ctx.state["draft_title"] = title
@@ -72,6 +89,7 @@ async def _set_title(ctx: AppContext, args: dict) -> str:
 
 
 async def _insert_html(ctx: AppContext, args: dict) -> str:
+    """xiumi_insert_html 处理器：插入微信安全 HTML 内容块。Args: ctx; args 含 html。Returns: 结果文本。"""
     html = str(args["html"]).strip()
     if not html.startswith("<"):
         return "ERROR: html 参数必须是 HTML 片段（以 < 开头）"
@@ -83,7 +101,10 @@ async def _insert_html(ctx: AppContext, args: dict) -> str:
 
 
 async def _insert_image(ctx: AppContext, args: dict) -> str:
-    """上传本地图片：点击图片入口 → CDP 塞文件 → 触发 change。"""
+    """xiumi_insert_image 处理器：点击图片入口 → CDP 塞文件 → 触发 change。
+
+    Args: ctx 上下文; args 含 path（本地图片路径）。Returns: 结果文本。
+    """
     sel = _selectors()
     tab = ctx.require_tab()
     path = str(args["path"])
@@ -123,6 +144,7 @@ async def _insert_image(ctx: AppContext, args: dict) -> str:
 
 
 async def _save(ctx: AppContext, args: dict) -> str:
+    """xiumi_save 处理器：点击保存按钮。Args: ctx; args 未用（占位统一签名）。Returns: 结果文本。"""
     sel = _selectors()
     tab = ctx.require_tab()
     btns = await tab.agent("findByText", sel["save_text"], "button, a, span, div[role='button']", 5)
@@ -134,6 +156,10 @@ async def _save(ctx: AppContext, args: dict) -> str:
 
 
 async def _preview(ctx: AppContext, args: dict) -> str:
+    """xiumi_preview 处理器：编辑区截图并发 SCREENSHOT 事件。
+
+    Args: ctx 上下文; args 含 filename（可选）。Returns: 截图路径文本。
+    """
     sel = _selectors()
     tab = ctx.require_tab()
     path = _shot_path(ctx, args.get("filename"))
@@ -148,6 +174,7 @@ async def _preview(ctx: AppContext, args: dict) -> str:
 
 
 async def _copy_for_wechat(ctx: AppContext, args: dict) -> str:
+    """xiumi_copy_for_wechat 处理器：点击复制按钮把内容放进剪贴板。Args: ctx; args 占位。Returns: 结果文本。"""
     sel = _selectors()
     tab = ctx.require_tab()
     for text in sel["copy_texts"]:
@@ -162,7 +189,8 @@ async def _copy_for_wechat(ctx: AppContext, args: dict) -> str:
 def _toolspecs() -> list[tuple]:
     """工具四元组清单：name/description/parameters/handler。
 
-    Args: None。Returns: list[tuple]，_build_tools 据此构造 Tool。
+    Globals Used: 各 _x 处理器。Calls: Tool 构造。
+    Args: None。Returns: (name, desc, parameters, handler) 元组列表。
     """
     return [
         ("xiumi_new_draft", "新建一篇图文草稿并设置标题", {
@@ -197,6 +225,7 @@ class XiumiEditorPlugin(Plugin):
     description = "秀米排版编辑器：新建图文、设标题、插入 HTML 块、上传插图、保存、预览、复制到公众号"
 
     def tools(self, ctx: AppContext) -> list[Tool]:
+        """注册编辑器工具。Calls: _toolspecs / Tool 构造。Args: ctx。Returns: 工具列表。"""
         """按 _toolspecs 清单构造工具。
 
         Args: ctx 上下文（声明留作扩展）。Returns: Tool 列表。

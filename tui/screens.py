@@ -1,5 +1,5 @@
 """模态屏家族：模型配置屏（/model）与快捷键帮助浮层（/help）。"""
-from __future__ import annotations
+from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 
 from rich.text import Text  # 帮助浮层的富文本构建
 from textual.app import ComposeResult  # 布局协议
@@ -14,11 +14,12 @@ class HelpScreen(ModalScreen[None]):
     """快捷键帮助浮层：任意键关闭。
 
     类职责：展示键位与命令速查。
+    属性：无实例状态（compose 即渲染）。
     生命周期：/help 打开 → 任意键 dismiss(None)。
     """
 
     def compose(self) -> ComposeResult:
-        """布局：橙标题 + 键位两列文本。"""
+        """布局：橙标题 + 键位两列文本。Calls: Static 构造。Args: None。Returns: 布局生成器。"""
         rows = [
             ("/model", "配置模型、API Key、接口地址"),
             ("/file 路径", "载入任务文件，支持 [img:路径]"),
@@ -39,15 +40,21 @@ class HelpScreen(ModalScreen[None]):
         yield Static(content, id="help-box")
 
     def on_key(self, event) -> None:
-        """任意键关闭浮层。Args: event 按键事件。"""
+        """任意键关闭浮层。Calls: dismiss。Args: event 按键事件。Returns: None。"""
         self.dismiss(None)
 
 
 class ModelConfigScreen(ModalScreen[bool]):
-    """模型配置屏：三项 LLM 配置同屏填写保存；/model 打开，保存/取消后 dismiss。"""
+    """模型配置屏：三项 LLM 配置同屏填写保存；/model 打开，保存/取消后 dismiss。
+
+    类职责：收集 LLM 三要素并持久化（凭据不进对话上下文）。
+    属性：无实例状态（保存即退出）。
+    生命周期：/model 打开 → Enter 保存 dismiss(True) / 取消 dismiss(False)。
+    """
 
     def compose(self) -> ComposeResult:
-        """布局：标题 + 三输入框（模型/Key/URL）+ 保存取消按钮 + 状态行。"""
+        """布局：标题 + 三输入框（模型/Key/URL）+ 保存取消按钮 + 状态行。
+        Calls: Input/Button/Static 构造。Args: None。Returns: 布局生成器。"""
         with Vertical(id="cfg-box"):
             yield Label("模型配置", classes="login-title")
             yield Label("Tab 切换，Enter 下一项", classes="login-sub")
@@ -60,7 +67,7 @@ class ModelConfigScreen(ModalScreen[bool]):
             yield Static("", id="cfg-status")
 
     def on_mount(self) -> None:
-        """挂载：聚焦模型框。"""
+        """挂载：聚焦模型框。Globals Used: None。Calls: focus。Args: None。Returns: None。"""
         self.query_one("#cfg-model", Input).focus()
 
     def _status(self, text: str) -> None:
@@ -68,6 +75,7 @@ class ModelConfigScreen(ModalScreen[bool]):
         self.query_one("#cfg-status", Static).update(text)
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
+        """Enter 在三输入框间流转，末框保存。Calls: focus / _save / dismiss。Args: event 提交事件。Returns: None。"""
         """Enter 流转：模型→Key→URL→保存；stop 防冒泡成任务。
 
         Args: event 输入提交事件。Returns: None。
@@ -83,7 +91,11 @@ class ModelConfigScreen(ModalScreen[bool]):
             self._save()
 
     def _save(self) -> None:
-        """保存非空项到 .env 并刷新 Agent。Calls: persist_env / apply_llm_config / apply_model。"""
+        """保存非空项到 .env 并刷新 Agent。
+
+        Globals Used: None。Calls: persist_env / apply_llm_config / apply_model / refresh_welcome。
+        Args: None。Returns: None。
+        """
         from core.config import persist_env  # 局部导入：配置持久化
 
         app = self.app
@@ -123,7 +135,7 @@ class ModelConfigScreen(ModalScreen[bool]):
         self.dismiss(True)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        """按钮分发：保存 / 取消。Args: event 按钮事件。"""
+        """按钮分发：保存 / 取消。Calls: _save / dismiss。Args: event 按钮事件。Returns: None。"""
         if event.button.id == "btn-save":
             self._save()
         else:

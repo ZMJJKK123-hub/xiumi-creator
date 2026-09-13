@@ -2,7 +2,7 @@
 
 状态挂在 ctx.state[STATE_KEY]，主标签页工具通过 background=true 参数复用。
 """
-from __future__ import annotations
+from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 
 import asyncio  # 端口轮询间隔
 import shutil  # 临时 profile 目录清理
@@ -30,12 +30,17 @@ _BASE_ARGS = [
 
 
 class AuxBrowserError(RuntimeError):
-    """后台浏览器生命周期异常（带用户可读上下文）。"""
+    """后台浏览器生命周期异常（带用户可读上下文）。
+
+    类职责：标记后台实例未打开等边界状态。
+    属性：无附加。生命周期：raise 即弃。
+    """
 
 
 def get_aux_tab(ctx: AppContext) -> Tab:
     """返回后台工具箱浏览器的标签页。
 
+    Globals Used: None。Calls: ctx.state 取实例。
     Args: ctx 全局上下文。Returns: Tab。
     Raises: AuxBrowserError 未打开时。
     """
@@ -132,6 +137,7 @@ async def open_aux(ctx: AppContext, url: str, headless: bool) -> dict:
 async def close_aux(ctx: AppContext) -> bool:
     """关闭并清理后台浏览器。
 
+    Globals Used: None。Calls: cdp.close / 进程回收。
     Args: ctx 上下文。Returns: 是否确有实例被关闭。
     """
     aux = ctx.state.pop(STATE_KEY, None)

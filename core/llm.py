@@ -1,12 +1,12 @@
 """OpenAI 兼容 LLM 客户端（支持智谱/DeepSeek/Kimi/opencode 网关等）。"""
-from __future__ import annotations
+from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 
 import asyncio  # 重试退避
 import uuid  # 网关会话标识
 
-from openai import APIConnectionError, APITimeoutError, AsyncOpenAI, RateLimitError
+from openai import APIConnectionError, APITimeoutError, AsyncOpenAI, RateLimitError  # SDK 客户端与可重试异常族
 
-from core.config import Config
+from core.config import Config  # 全局配置 DTO
 
 # 进程级网关会话 ID：opencode Zen 网关要求 x-opencode-session 路由请求
 _SESSION_ID = f"xiumi-agent-{uuid.uuid4().hex[:12]}"
@@ -46,6 +46,7 @@ class LLMClient:
     ) -> dict:
         """流式对话：思考/正文增量经回调实时吐出，返回聚合后的消息 dict。
 
+        Globals Used: None。Calls: client.chat.completions.create / _consume_stream。
         Args: messages 对话历史; tools 工具声明; on_reasoning 思考增量回调;
             on_content 正文增量回调。Returns: {role, content, reasoning_content?, tool_calls?}。
         """
