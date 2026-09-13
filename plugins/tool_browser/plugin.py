@@ -18,10 +18,7 @@ from plugins.tool_browser.backend import close_aux, open_aux  # 后台浏览器�
 
 
 async def _t_open(ctx: AppContext, args: dict) -> str:
-    """browser_open 处理器：校验 url 后打开后台浏览器。
-
-    Args: ctx 上下文; args 含 url/headless。Returns: 结果文本（带后续操作指引）。
-    """
+    """browser_open 处理器：校验 url 后打开后台浏览器。 Args: ctx 上下文; args 含 url/headless。Returns: 结果文本（带后续操作指引）。"""
     url = args["url"]
     if not url.startswith(("http://", "https://", "file://", "about:")):
         return "ERROR: url 需以 http:// 或 https:// 开头"

@@ -20,19 +20,12 @@ HERE = Path(__file__).parent  # 插件目录（selectors.json 所在地）
 
 
 def _selectors() -> dict:
-    """读取插件选择器表。
-
-    Args: None。Returns: selectors.json 解析后的 dict。
-    """
+    """读取插件选择器表。 Args: None。Returns: selectors.json 解析后的 dict。"""
     return json.loads((HERE / "selectors.json").read_text(encoding="utf-8"))
 
 
 def _shot_path(ctx: AppContext, name: str | None) -> Path:
-    """解析预览截图落盘路径。
-
-    Args: ctx 上下文（取截图目录）; name 自定义文件名（None 自动命名）。
-    Returns: 绝对 Path（.png 后缀）。
-    """
+    """解析预览截图落盘路径。 Args: ctx 上下文（取截图目录）; name 自定义文件名（None 自动命名）。 Returns: 绝对 Path（.png 后缀）。"""
     path = Path(name) if name else Path(time.strftime("preview_%H%M%S.png"))
     if not path.is_absolute():
         path = ctx.config.screenshots_dir / path
@@ -40,10 +33,7 @@ def _shot_path(ctx: AppContext, name: str | None) -> Path:
 
 
 async def _new_draft(ctx: AppContext, args: dict) -> str:
-    """新建图文草稿并设置标题。
-
-    Args: ctx 上下文; args 含 title。Returns: 结果文本（失败以 ERROR 开头）。
-    """
+    """新建图文草稿并设置标题。 Args: ctx 上下文; args 含 title。Returns: 结果文本（失败以 ERROR 开头）。"""
     sel = _selectors()
     tab = ctx.require_tab()
     title = str(args.get("title", "未命名图文")).strip()
@@ -70,10 +60,7 @@ async def _new_draft(ctx: AppContext, args: dict) -> str:
 
 
 async def _set_title_inner(ctx: AppContext, title: str) -> None:
-    """按 选择器 → placeholder 文本 两条路径设置标题。
-
-    Args: ctx 上下文; title 标题文本。Returns: None；找不到输入框 raise。
-    """
+    """按 选择器 → placeholder 文本 两条路径设置标题。 Args: ctx 上下文; title 标题文本。Returns: None；找不到输入框 raise。"""
     tab = ctx.require_tab()
     sel = _selectors()
     found = await tab.agent("find", sel["title_input"], 3)
@@ -105,10 +92,7 @@ async def _insert_html(ctx: AppContext, args: dict) -> str:
 
 
 async def _insert_image(ctx: AppContext, args: dict) -> str:
-    """xiumi_insert_image 处理器：点击图片入口 → CDP 塞文件 → 触发 change。
-
-    Args: ctx 上下文; args 含 path（本地图片路径）。Returns: 结果文本。
-    """
+    """xiumi_insert_image 处理器：点击图片入口 → CDP 塞文件 → 触发 change。 Args: ctx 上下文; args 含 path（本地图片路径）。Returns: 结果文本。"""
     sel = _selectors()
     tab = ctx.require_tab()
     path = str(args["path"])
@@ -160,10 +144,7 @@ async def _save(ctx: AppContext, args: dict) -> str:
 
 
 async def _preview(ctx: AppContext, args: dict) -> str:
-    """xiumi_preview 处理器：编辑区截图并发 SCREENSHOT 事件。
-
-    Args: ctx 上下文; args 含 filename（可选）。Returns: 截图路径文本。
-    """
+    """xiumi_preview 处理器：编辑区截图并发 SCREENSHOT 事件。 Args: ctx 上下文; args 含 filename（可选）。Returns: 截图路径文本。"""
     sel = _selectors()
     tab = ctx.require_tab()
     path = _shot_path(ctx, args.get("filename"))
@@ -191,11 +172,7 @@ async def _copy_for_wechat(ctx: AppContext, args: dict) -> str:
 
 
 def _toolspecs() -> list[tuple]:
-    """工具四元组清单：name/description/parameters/handler。
-
-    Globals Used: 各 _x 处理器。Calls: Tool 构造。
-    Args: None。Returns: (name, desc, parameters, handler) 元组列表。
-    """
+    """工具四元组清单：name/description/parameters/handler。 Args: None。Returns: (name, desc, parameters, handler) 元组列表。"""
     return [
         ("xiumi_new_draft", "新建一篇图文草稿并设置标题", {
             "type": "object", "properties": {"title": {"type": "string", "description": "文章标题"}},

@@ -25,10 +25,7 @@ class Agent:
     """
 
     def __init__(self, ctx: AppContext, registry: ToolRegistry, llm: LLMClient, bus: EventBus) -> None:
-        """注入协作对象。
-
-        Args: ctx 上下文; registry 工具表; llm 客户端; bus 事件总线。
-        """
+        """注入协作对象。 Args: ctx 上下文; registry 工具表; llm 客户端; bus 事件总线。"""
         self.ctx = ctx
         self.registry = registry
         self.llm = llm
@@ -74,11 +71,7 @@ class Agent:
         )
 
     async def _llm_round(self, messages: list[dict], sink) -> dict:
-        """单轮 LLM 调用：通知 sink 起止，思考增量透传。
-
-        Args: messages 对话历史（就地追加）; sink 思考回调对象或 None。
-        Returns: 标准化回复 dict。
-        """
+        """单轮 LLM 调用：通知 sink 起止，思考增量透传。 Args: messages 对话历史（就地追加）; sink 思考回调对象或 None。 Returns: 标准化回复 dict。"""
         if sink is None:
             return await self.llm.chat_stream(messages, self.registry.schemas())
         sink.round_start()
@@ -91,11 +84,7 @@ class Agent:
             sink.round_done()
 
     async def _exec_tool_calls(self, messages: list, tool_calls: list) -> int:
-        """执行一批工具调用并回填结果消息。
-
-        Args: messages 对话消息（就地追加 tool 消息）; tool_calls 本轮调用。
-        Returns: 成功分发的调用数。
-        """
+        """执行一批工具调用并回填结果消息。 Args: messages 对话消息（就地追加 tool 消息）; tool_calls 本轮调用。 Returns: 成功分发的调用数。"""
         done = 0
         for tc in tool_calls:
             fn = tc["function"]

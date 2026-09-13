@@ -54,11 +54,7 @@ class ToolRegistry:
         self._tools: dict[str, Tool] = {}  # 工具名→Tool
 
     def register(self, tool: Tool) -> None:
-        """登记工具。
-
-        Globals Used: None。Calls: 无。
-        Args: tool 工具 DTO。Returns: None；重名 raise ValueError。
-        """
+        """登记工具。 Globals Used: None。Calls: 无。 Args: tool 工具 DTO。Returns: None；重名 raise ValueError。"""
         if tool.name in self._tools:
             raise ValueError(f"工具名冲突: {tool.name} 已被注册")
         self._tools[tool.name] = tool
@@ -103,9 +99,9 @@ class ToolRegistry:
 
 
 class AppContext:
-    """贯穿全局的上下文：工具/插件/TUI 都通过它访问浏览器与状态。
+    """贯穿全局的依赖容器（三重角色见模块头）。
 
-    类职责：依赖容器——持有配置、事件总线、CDP 连接、当前标签页与共享状态。
+    类职责：持有配置、事件总线、CDP 连接、当前标签页与共享状态。
     属性：config 配置；events 事件总线；cdp 浏览器级连接；tab 当前标签页；
         state 插件共享状态（登录态、草稿信息等）。
     生命周期：App 构造创建 → boot 填充 cdp/tab → 全程注入各层。
@@ -120,11 +116,7 @@ class AppContext:
         self.state: dict[str, Any] = {}  # 插件共享状态（如 draft 信息、登录态）
 
     def require_tab(self) -> Tab:
-        """取当前标签页，未就绪即抛错。
-
-        Globals Used: None。Calls: 无。
-        Args: None。Returns: Tab；未就绪 raise RuntimeError。
-        """
+        """取当前标签页，未就绪即抛错。 Globals Used: None。Calls: 无。 Args: None。Returns: Tab；未就绪 raise RuntimeError。"""
         if not self.tab:
             raise RuntimeError("浏览器标签页尚未就绪")
         return self.tab
@@ -146,10 +138,7 @@ class Plugin:
         return []
 
     def actions(self, ctx: AppContext) -> dict[str, Callable]:
-        """内部动作表（凭据等敏感能力不进 LLM 上下文）。
-
-        Calls: 子类实现。Args: ctx 上下文。Returns: {'插件名.动作名': async callable}。
-        """
+        """内部动作表（凭据等敏感能力不进 LLM 上下文）。 Calls: 子类实现。Args: ctx 上下文。Returns: {'插件名.动作名': async callable}。"""
         return {}
 
     async def on_load(self, ctx: AppContext) -> None:

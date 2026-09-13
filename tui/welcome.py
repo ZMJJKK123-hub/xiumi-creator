@@ -54,18 +54,12 @@ def build_title() -> str:
 
 
 def _model_line(model: str) -> Text:
-    """模型行：fold 折行而非省略号，任何宽度不出现截断。
-
-    Args: model 模型显示文案。Returns: Text。
-    """
+    """模型行：fold 折行而非省略号，任何宽度不出现截断。 Args: model 模型显示文案。Returns: Text。"""
     return Text(f"模型: {model}", style=GRAY, overflow="fold")
 
 
 def _compact(model: str) -> Group:
-    """构建窄终端简版内容（双栏放不下时替代，避免溢出与折行）。
-
-    Args: model 模型显示文案。Returns: Group 简版内容。
-    """
+    """构建窄终端简版内容（双栏放不下时替代，避免溢出与折行）。 Args: model 模型显示文案。Returns: Group 简版内容。"""
     return Group(
         Text("Welcome back!", style="bold white", justify="center"),
         Text(),
@@ -76,10 +70,7 @@ def _compact(model: str) -> Group:
 
 
 def _ref_width(width: int) -> int:
-    """右栏内容宽：双栏比例 45/55 后再让速查区至少保底。
-
-    Args: width 卡内内容宽度。Returns: 右栏内容宽（格）。
-    """
+    """右栏内容宽：双栏比例 45/55 后再让速查区至少保底。 Args: width 卡内内容宽度。Returns: 右栏内容宽（格）。"""
     return max(int((width - 8) * 0.55) - 2, _MIN_REF)
 
 

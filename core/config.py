@@ -96,11 +96,7 @@ class Config:
 
     @property
     def llm_ready(self) -> bool:
-        """LLM 三要素是否齐备（模型由 /model 设置，无默认值）。
-
-        Globals Used: None。Calls: 无。
-        Args: None。Returns: 是否就绪。
-        """
+        """LLM 三要素是否齐备（模型由 /model 设置，无默认值）。 Globals Used: None。Calls: 无。 Args: None。Returns: 是否就绪。"""
         return bool(self.api_key) and bool(self.base_url) and bool(self.model)
 
 

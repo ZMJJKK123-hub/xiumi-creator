@@ -27,10 +27,7 @@ class LLMClient:
     """
 
     def __init__(self, config: Config):
-        """按配置构造客户端；opencode 网关附加会话头。
-
-        Args: config 含 base_url/api_key/model。
-        """
+        """按配置构造客户端；opencode 网关附加会话头。 Args: config 含 base_url/api_key/model。"""
         self.config = config
         headers: dict[str, str] = {}
         if "opencode" in config.base_url:

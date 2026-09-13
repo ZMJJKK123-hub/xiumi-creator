@@ -99,10 +99,7 @@ class EdgeBrowser:
 
     # ---- 标签页 ----
     async def _close_extra(self, keep_id: str, url_contains: str) -> None:
-        """关闭多余标签页，收敛到单标签。
-
-        Args: keep_id 保留的 targetId; url_contains URL 含此串也保留。Returns: None。
-        """
+        """关闭多余标签页，收敛到单标签。 Args: keep_id 保留的 targetId; url_contains URL 含此串也保留。Returns: None。"""
         """循环关闭多余标签（空白页 + 同域重复页），保持单一工作标签。
 
         Edge 会话恢复是异步的，需复查到稳定；会话记录随之收敛，

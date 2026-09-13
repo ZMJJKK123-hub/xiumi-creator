@@ -30,10 +30,7 @@ def _selectors() -> dict:
 
 
 async def _wait_rendered(tab: Tab, timeout: float = _RENDER_TIMEOUT) -> bool:
-    """等 SPA 渲染出实际内容（body 文本 > 30 字符），防空白页误判。
-
-    Args: tab 页面标签; timeout 最长等待秒。Returns: 是否渲染完成。
-    """
+    """等 SPA 渲染出实际内容（body 文本 > 30 字符），防空白页误判。 Args: tab 页面标签; timeout 最长等待秒。Returns: 是否渲染完成。"""
     deadline = asyncio.get_event_loop().time() + timeout
     while asyncio.get_event_loop().time() < deadline:
         try:

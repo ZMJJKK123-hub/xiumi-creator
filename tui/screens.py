@@ -97,11 +97,7 @@ class ModelConfigScreen(ModalScreen[bool]):
             self._save()
 
     def _save(self) -> None:
-        """保存非空项到 .env 并刷新 Agent。
-
-        Globals Used: None。Calls: persist_env / apply_llm_config / apply_model / refresh_welcome。
-        Args: None。Returns: None。
-        """
+        """保存非空项到 .env 并刷新 Agent。 Args: None。Returns: None。"""
         from core.config import persist_env  # 局部导入：配置持久化
 
         app = self.app

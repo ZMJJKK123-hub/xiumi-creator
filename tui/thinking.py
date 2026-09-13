@@ -22,12 +22,12 @@ REFRESH_S = 0.06
 
 
 class ThinkingPanel(Vertical):
-    """思考流面板：连续文本视窗 + 单行状态，按状态类切换形态。
+    """思考流面板（行为细节见模块头）。
 
-    类职责：呈现思考流（默认收起单行，ctrl+o 展开 10 行独立滚动）。
+    类职责：思考文本的承载与三态切换（streaming/collapsed/expanded）。
     类变量：can_focus=False（焦点恒留输入框）。
-    实例：_buf 全量思考文本；_last 上次刷新时间戳；_t0 轮次起点。
-    生命周期：任务开始挂载进 Transcript；轮次驱动状态迁移，旧面板留存为收起行。
+    实例：_buf 全量思考文本；_last 刷新节流戳；_t0 轮次起点；_in_round 轮次进行中。
+    生命周期：_start_task 挂载 → 轮次驱动迁移 → 无内容自移除/旧面板留存为收起行。
     """
 
     can_focus = False
@@ -152,10 +152,7 @@ class ThinkingSink:
     """
 
     def __init__(self, panel: ThinkingPanel) -> None:
-        """绑定面板。
-
-        Args: panel 思考面板实例。
-        """
+        """绑定面板。 Args: panel 思考面板实例。"""
         self._panel = panel
         self._t0 = 0.0
 

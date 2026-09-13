@@ -32,21 +32,14 @@ class WelcomeCard(Static):
     can_focus = False
 
     def __init__(self) -> None:
-        """初始化：空内容挂载，模型文案由 boot 注入。
-
-        Args: None。
-        """
+        """初始化：空内容挂载，模型文案由 boot 注入。 Args: None。"""
         super().__init__("", id="welcome")  # id 绑定部件自身，CSS #welcome 恒生效
         self._model: str = "-"
         self._last_w: int = -1  # 上次重排宽度（resize 守卫）
         self.border_title = build_title()
 
     def set_model(self, model: str) -> None:
-        """更新模型显示文案并触发重排。
-
-        Globals Used: None。Calls: refresh(layout)。
-        Args: model 模型显示文案。Returns: None。
-        """
+        """更新模型显示文案并触发重排。 Globals Used: None。Calls: refresh(layout)。 Args: model 模型显示文案。Returns: None。"""
         self._model = model
         self.refresh(layout=True)
 
@@ -57,10 +50,7 @@ class WelcomeCard(Static):
             self.refresh(layout=True)
 
     def _width(self) -> int:
-        """卡内内容宽度；布局未完成时回退终端宽度估算。
-
-        Args: None。Returns: int 显示格数。
-        """
+        """卡内内容宽度；布局未完成时回退终端宽度估算。 Args: None。Returns: int 显示格数。"""
         if self.content_size.width:
             return self.content_size.width
         try:
@@ -79,9 +69,9 @@ class WelcomeCard(Static):
 
 
 class Transcript(VerticalScroll):
-    """消息流容器：每条消息独立部件，思考面板可内联挂载。
+    """消息流容器（架构角色见模块头）。
 
-    类职责：按序呈现全部会话内容，贴底自动跟随滚动。
+    类职责：按序呈现会话内容，贴底自动跟随滚动；为思考面板提供内联挂载点。
     类变量：can_focus=False（焦点恒留输入框）。
     实例：写入时若原本贴底则自动跟随滚动；用户上翻查看历史时不打扰。
     生命周期：compose 创建，App 全程复用；clear 由 ctrl+l 调用。
@@ -90,10 +80,7 @@ class Transcript(VerticalScroll):
     can_focus = False
 
     def _w(self) -> int:
-        """可用内容宽度；layout 未完成(size=0)时回退 app 终端宽。
-
-        Args: None。Returns: int 显示格数。
-        """
+        """可用内容宽度；layout 未完成(size=0)时回退 app 终端宽。 Args: None。Returns: int 显示格数。"""
         if self.size.width:
             return self.size.width
         try:
@@ -106,10 +93,7 @@ class Transcript(VerticalScroll):
         return self.scroll_y >= self.max_scroll_y - 1
 
     def _emit(self, content, cls: str | None = None) -> None:
-        """追加一条消息部件；原贴底时跟随滚动到末尾。
-
-        Args: content rich 渲染对象; cls 附加样式类（如用户条边框）。Returns: None。
-        """
+        """追加一条消息部件；原贴底时跟随滚动到末尾。 Args: content rich 渲染对象; cls 附加样式类（如用户条边框）。Returns: None。"""
         pin = self._pinned()
         self.mount(Static(content, classes=cls) if cls else Static(content))
         if pin:
@@ -126,10 +110,7 @@ class Transcript(VerticalScroll):
         self.call_after_refresh(self.scroll_end, animate=False)
 
     def texts(self) -> list[str]:
-        """全部消息文本快照（rich Text 归一为纯文本；测试与取证用）。
-
-        Globals Used: None。Calls: 无（遍历子部件）。Args: None。Returns: str 列表。
-        """
+        """全部消息文本快照（rich Text 归一为纯文本；测试与取证用）。 Globals Used: None。Calls: 无（遍历子部件）。Args: None。Returns: str 列表。"""
         out: list[str] = []
         for child in self.children:
             if isinstance(child, Static):
@@ -171,10 +152,7 @@ class Transcript(VerticalScroll):
             self._emit(t)
 
     def write_action(self, name: str, args: dict) -> None:
-        """工具调用行：└ + 粗体工具名 + 灰色参数（按宽度截断）。
-
-        Args: name 工具名; args 参数字典。Returns: None。
-        """
+        """工具调用行：└ + 粗体工具名 + 灰色参数（按宽度截断）。 Args: name 工具名; args 参数字典。Returns: None。"""
         brief = ", ".join(f"{k}={str(v)[:50]!r}" for k, v in list(args.items())[:4])
         budget = max(self._w() - 4 - _cells(name) - 2, 10)
         brief = truncate_cells(brief, budget)
@@ -201,11 +179,7 @@ class Transcript(VerticalScroll):
         self._emit(t)
 
     def write_system(self, text: str) -> None:
-        """系统提示：└ 灰字；⚠/❌ 前缀错误转红色 X 行。
-
-        Globals Used: None。Calls: _emit。
-        Args: text 提示文本。Returns: None。
-        """
+        """系统提示：└ 灰字；⚠/❌ 前缀错误转红色 X 行。 Globals Used: None。Calls: _emit。 Args: text 提示文本。Returns: None。"""
         stripped = text.rstrip()
         t = Text()
         if stripped.startswith(("⚠", "❌")):
@@ -218,18 +192,12 @@ class Transcript(VerticalScroll):
         self._emit(Text(" "))
 
     def write_tool_note(self, text: str) -> None:
-        """轻量附注行（截图路径等）：两格缩进 └ 灰字。
-
-        Globals Used: None。Calls: _emit。Args: text 附注文本。Returns: None。
-        """
+        """轻量附注行（截图路径等）：两格缩进 └ 灰字。 Globals Used: None。Calls: _emit。Args: text 附注文本。Returns: None。"""
         self._emit(Text("  └ " + text, style=GRAY))
 
 
 def _cells(s: str) -> int:
-    """字符串显示宽度（CJK 一字两格）。
-
-    Args: s 输入串。Returns: int 显示格数。
-    """
+    """字符串显示宽度（CJK 一字两格）。 Args: s 输入串。Returns: int 显示格数。"""
     from rich.cells import cell_len  # 局部导入避免模块级第三方耦合
 
     return cell_len(s)

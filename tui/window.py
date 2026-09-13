@@ -25,18 +25,12 @@ class WindowScheduler:
     """
 
     def __init__(self, app_ref) -> None:
-        """绑定宿主 App。
-
-        Args: app_ref 宿主应用（读取其 browser/ctx 属性）。
-        """
+        """绑定宿主 App。 Args: app_ref 宿主应用（读取其 browser/ctx 属性）。"""
         self._app = app_ref
         self._log = get_logger("window")
 
     def set(self, state: str) -> None:
-        """派发窗口状态切换（normal/minimized）。Calls: set_window_state（后台任务）。
-
-        Args: state 目标窗口状态。Returns: None。
-        """
+        """派发窗口状态切换（normal/minimized）。Calls: set_window_state（后台任务）。 Args: state 目标窗口状态。Returns: None。"""
 
         async def _go() -> None:
             """窗口状态设置协程。Args: None。Returns: None。"""

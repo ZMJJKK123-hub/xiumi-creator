@@ -45,10 +45,7 @@ class SuggestController:
     """
 
     def __init__(self, app) -> None:
-        """绑定宿主。
-
-        Args: app 宿主应用（提供 commands 路由表与容器查询）。
-        """
+        """绑定宿主。 Args: app 宿主应用（提供 commands 路由表与容器查询）。"""
         self._app = app
         self._items: list[tuple[str, str]] = []
         self._index: int = 0
@@ -132,10 +129,7 @@ class SuggestController:
         self._set_box(lines)
 
     def _set_box(self, content: Text | None) -> None:
-        """写入面板容器并切换显隐。
-
-        Args: content 渲染内容，None 表示隐藏。Returns: None。
-        """
+        """写入面板容器并切换显隐。 Args: content 渲染内容，None 表示隐藏。Returns: None。"""
         try:
             from textual.widgets import Static  # 局部导入：仅渲染用
 

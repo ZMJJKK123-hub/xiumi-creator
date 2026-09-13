@@ -104,10 +104,7 @@ class CDPConnection:
 
     @staticmethod
     def _http_get(port: int, path: str) -> dict:
-        """同步 HTTP GET 调试端点（线程池中调用）。
-
-        Args: port 端口; path 路径。Returns: 解析后的 JSON dict。
-        """
+        """同步 HTTP GET 调试端点（线程池中调用）。 Args: port 端口; path 路径。Returns: 解析后的 JSON dict。"""
         with urllib.request.urlopen(f"http://127.0.0.1:{port}{path}", timeout=3) as resp:
             return json.loads(resp.read().decode("utf-8"))
 
@@ -129,10 +126,7 @@ class CDPConnection:
             await self._ws.close()
 
     def http_get(self, path: str) -> dict:
-        """实例口径的调试端点 GET。
-
-        Calls: _http_get。Args: path 路径（如 /json/list）。Returns: JSON dict。
-        """
+        """实例口径的调试端点 GET。 Calls: _http_get。Args: path 路径（如 /json/list）。Returns: JSON dict。"""
         return self._http_get(self.port, path)
 
     # ---- 消息收发 ----
@@ -174,10 +168,7 @@ class CDPConnection:
         self._event_cbs.append(callback)
 
     async def _recv_loop(self) -> None:
-        """常驻收发循环：响应 Future 汇合 + 事件分发。
-
-        Args: None。Returns: None（连接断开即退出并唤醒挂起请求）。
-        """
+        """常驻收发循环：响应 Future 汇合 + 事件分发。 Args: None。Returns: None（连接断开即退出并唤醒挂起请求）。"""
         try:
             async for raw in self._ws:
                 msg = json.loads(raw)

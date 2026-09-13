@@ -24,11 +24,7 @@ COMMAND_INFO = {
 
 
 async def _cmd_login(app: Any, raw: str) -> bool:
-    """/login：弹出浏览器官网登录页，转圈等待用户完成登录。
-
-    Args: app 宿主; raw 原始输入。Returns: 恒 True。
-    Calls: tab.navigate / app._set_busy / xiumi_login.check 轮询。
-    """
+    """/login：弹出浏览器官网登录页，转圈等待用户完成登录。 Args: app 宿主; raw 原始输入。Returns: 恒 True。"""
     if not (app.ctx and app.ctx.tab):
         app._chat("system", "浏览器尚未就绪")
         return True
@@ -39,10 +35,7 @@ async def _cmd_login(app: Any, raw: str) -> bool:
 
 
 def _login_wait(app: Any):
-    """构造登录等待协程：弹官网 → 转圈轮询 → 成功/超时/取消回报。
-
-    Args: app 宿主。Returns: 协程函数。
-    """
+    """构造登录等待协程：弹官网 → 转圈轮询 → 成功/超时/取消回报。 Args: app 宿主。Returns: 协程函数。"""
     import asyncio  # 轮询间隔
     import time  # 超时计时
 
@@ -79,20 +72,13 @@ def _login_wait(app: Any):
 
 
 async def _cmd_help(app: Any, raw: str) -> bool:
-    """/help：打开帮助浮层。
-
-    Args: app 宿主; raw 原始输入。Returns: 恒 True。Calls: app.open_help。
-    """
+    """/help：打开帮助浮层。 Args: app 宿主; raw 原始输入。Returns: 恒 True。Calls: app.open_help。"""
     app.open_help()
     return True
 
 
 async def _cmd_model(app: Any, raw: str) -> bool:
-    """/model：打开模型配置屏（模型名、API Key、接口地址同屏填写保存）。
-
-    Args: app 宿主; raw 原始输入（参数被忽略，统一走配置屏）。Returns: 恒 True。
-    Calls: app.push_screen(ModelConfigScreen)。
-    """
+    """/model：打开模型配置屏（模型名、API Key、接口地址同屏填写保存）。 Args: app 宿主; raw 原始输入（参数被忽略，统一走配置屏）。Returns: 恒 True。"""
     from tui.screens import ModelConfigScreen  # 局部导入：避免循环依赖
 
     app.push_screen(ModelConfigScreen())
@@ -114,12 +100,7 @@ async def _cmd_shot(app: Any, raw: str) -> bool:
 
 
 async def _cmd_file(app: Any, raw: str) -> bool:
-    """/file：载入 Markdown 任务文件并回显展开内容。
-
-    Args: app 宿主; raw 原始输入（含路径参数）。
-    Returns: 参数无效时 True；载入成功返回 False 交由任务流继续。
-    Calls: Path.read_text / app.transcript().write_user / app._chat。
-    """
+    """/file：载入 Markdown 任务文件并回显展开内容。 Args: app 宿主; raw 原始输入（含路径参数）。 Returns: 参数无效时 True；载入成功返回 False 交由任务流继续。"""
     parts = raw.split(maxsplit=1)
     if len(parts) < 2:
         app._chat("system", "用法: /file 路径/到/task.md")
@@ -157,10 +138,7 @@ class CommandRouter:
         return COMMAND_INFO
 
     def register(self, name: str, handler: Handler) -> None:
-        """注册新命令（扩展点）。Globals Used: None。Calls: 无。
-
-        Args: name 命令名含斜杠; handler 处理器。Returns: None。
-        """
+        """注册新命令（扩展点）。Globals Used: None。Calls: 无。 Args: name 命令名含斜杠; handler 处理器。Returns: None。"""
         self._routes[name] = handler
 
     async def dispatch(self, app: Any, raw: str) -> bool:

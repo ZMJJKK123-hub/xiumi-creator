@@ -38,10 +38,7 @@ async def boot(app: "XiumiAgentApp") -> None:
 
 
 async def _start_browser(app: "XiumiAgentApp") -> bool:
-    """启动并连接自动化浏览器，装载插件。
-
-    Args: app 宿主。Returns: 是否成功；失败已提示用户并置 _boot_failed。
-    """
+    """启动并连接自动化浏览器，装载插件。 Args: app 宿主。Returns: 是否成功；失败已提示用户并置 _boot_failed。"""
     try:
         app.browser = EdgeBrowser(app.config)
         await app.browser.ensure_started(start_url="https://xiumi.us/")
@@ -62,10 +59,7 @@ async def _start_browser(app: "XiumiAgentApp") -> bool:
 
 
 async def _check_login(app: "XiumiAgentApp") -> bool:
-    """登录态检查（异常按未登录处理）。
-
-    Args: app 宿主。Returns: 是否已登录。
-    """
+    """登录态检查（异常按未登录处理）。 Args: app 宿主。Returns: 是否已登录。"""
     try:
         url = await app.ctx.tab.current_url()
         if "/auth" in url:
@@ -78,10 +72,7 @@ async def _check_login(app: "XiumiAgentApp") -> bool:
 
 
 def _report_login_state(app: "XiumiAgentApp", logged_in: bool) -> None:
-    """按登录态给出提示文案。
-
-    Args: app 宿主; logged_in 检查结果。Returns: None。
-    """
+    """按登录态给出提示文案。 Args: app 宿主; logged_in 检查结果。Returns: None。"""
     if not logged_in:
         app._chat("system", "未登录：/login 登录 · /model 配置模型")
     else:

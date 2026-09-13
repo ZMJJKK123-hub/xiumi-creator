@@ -20,20 +20,14 @@ from plugins.tool_browser.backend import get_aux_tab  # background=true 时取�
 
 
 def _tab_for(ctx: AppContext, args: dict) -> Any:
-    """按 background 参数选择目标标签页。
-
-    Args: ctx 全局上下文; args 工具参数。Returns: Tab 实例。
-    """
+    """按 background 参数选择目标标签页。 Args: ctx 全局上下文; args 工具参数。Returns: Tab 实例。"""
     if args.get("background"):
         return get_aux_tab(ctx)
     return ctx.require_tab()
 
 
 async def _navigate(ctx: AppContext, args: dict) -> str:
-    """browser_navigate 处理器：主标签页导航。
-
-    Args: ctx; args 含 url。Returns: 结果文本。
-    """
+    """browser_navigate 处理器：主标签页导航。 Args: ctx; args 含 url。Returns: 结果文本。"""
     url = args["url"]
     if not url.startswith(("http://", "https://")):
         return "ERROR: url 必须以 http:// 或 https:// 开头"
@@ -44,38 +38,26 @@ async def _navigate(ctx: AppContext, args: dict) -> str:
 
 
 async def _outline(ctx: AppContext, args: dict) -> str:
-    """browser_dom_outline 处理器：精简元素树（ref 引用）。
-
-    Args: ctx; args 空。Returns: JSON 文本。
-    """
+    """browser_dom_outline 处理器：精简元素树（ref 引用）。 Args: ctx; args 空。Returns: JSON 文本。"""
     return json.dumps(await ctx.require_tab().agent("outline"), ensure_ascii=False)
 
 
 async def _click(ctx: AppContext, args: dict) -> str:
-    """browser_click 处理器：点击 ref 元素。
-
-    Args: ctx; args 含 ref。Returns: 结果文本。
-    """
+    """browser_click 处理器：点击 ref 元素。 Args: ctx; args 含 ref。Returns: 结果文本。"""
     await ctx.require_tab().agent("click", int(args["ref"]))
     await asyncio.sleep(0.6)
     return f"已点击 ref={args['ref']}"
 
 
 async def _type(ctx: AppContext, args: dict) -> str:
-    """browser_type 处理器：向 ref 元素输入文本。
-
-    Args: ctx; args 含 ref/text。Returns: 结果文本。
-    """
+    """browser_type 处理器：向 ref 元素输入文本。 Args: ctx; args 含 ref/text。Returns: 结果文本。"""
     await ctx.require_tab().agent("type", int(args["ref"]), str(args["text"]))
     await asyncio.sleep(0.3)
     return f"已向 ref={args['ref']} 输入文本"
 
 
 async def _press_key(ctx: AppContext, args: dict) -> str:
-    """browser_press_key 处理器：合成按键，失效时走 CDP 真实按键。
-
-    Args: ctx; args 含 key。Returns: 结果文本。
-    """
+    """browser_press_key 处理器：合成按键，失效时走 CDP 真实按键。 Args: ctx; args 含 key。Returns: 结果文本。"""
     tab = ctx.require_tab()
     key = args["key"]
     try:
@@ -86,10 +68,7 @@ async def _press_key(ctx: AppContext, args: dict) -> str:
 
 
 async def _exec_js(ctx: AppContext, args: dict) -> str:
-    """browser_exec_js 处理器：执行任意 JS（万能兜底）。
-
-    Args: ctx; args 含 code/await_promise/background。Returns: 序列化结果。
-    """
+    """browser_exec_js 处理器：执行任意 JS（万能兜底）。 Args: ctx; args 含 code/await_promise/background。Returns: 序列化结果。"""
     tab = _tab_for(ctx, args)
     value = await tab.evaluate(args["code"], await_promise=bool(args.get("await_promise", False)))
     if value is None:
@@ -115,10 +94,7 @@ async def _screenshot(ctx: AppContext, args: dict) -> str:
 
 
 async def _get_text(ctx: AppContext, args: dict) -> str:
-    """browser_get_text 处理器：读 ref 元素文本。
-
-    Args: ctx; args 含 ref/max。Returns: 元素文本。
-    """
+    """browser_get_text 处理器：读 ref 元素文本。 Args: ctx; args 含 ref/max。Returns: 元素文本。"""
     text = await ctx.require_tab().agent("getText", int(args["ref"]), int(args.get("max", 3000)))
     return text or "(空)"
 
@@ -202,9 +178,5 @@ class BrowserPlugin(Plugin):
     description = "通用网页操控：导航、元素树观察、点击、输入、执行 JS、截图"
 
     def tools(self, ctx: AppContext) -> list[Tool]:
-        """汇总全部工具声明。
-
-        Globals Used: 各 _t_* 工厂。Calls: 无（纯装配）。
-        Args: ctx 上下文（本插件不使用）。Returns: Tool 列表。
-        """
+        """汇总全部工具声明。 Globals Used: 各 _t_* 工厂。Calls: 无（纯装配）。 Args: ctx 上下文（本插件不使用）。Returns: Tool 列表。"""
         return [_t_navigate(), _t_outline(), _t_click(), _t_type(), _t_press(), _t_exec(), _t_capture(), _t_get_text()]

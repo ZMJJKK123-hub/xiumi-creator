@@ -252,10 +252,7 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
             t.write_system(text)
 
     def refresh_welcome(self) -> None:
-        """刷新欢迎卡模型文案（boot 与配置屏保存后调用）。
-
-        Args: None。Returns: None。Calls: WelcomeCard.set_model。
-        """
+        """刷新欢迎卡模型文案（boot 与配置屏保存后调用）。 Args: None。Returns: None。Calls: WelcomeCard.set_model。"""
         try:
             self.query_one(WelcomeCard).set_model(self._welcome_model())
         except NoMatches:  # 拆除期部件已销毁，无需刷新

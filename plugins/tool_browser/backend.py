@@ -54,10 +54,7 @@ def get_aux_tab(ctx: AppContext) -> Tab:
 
 
 def _spawn_edge(ctx: AppContext, headless: bool) -> tuple:
-    """启动临时 profile 的 Edge 进程。
-
-    Args: ctx 配置来源; headless 是否无头。Returns: (proc, user_data_dir)。
-    """
+    """启动临时 profile 的 Edge 进程。 Args: ctx 配置来源; headless 是否无头。Returns: (proc, user_data_dir)。"""
     if not ctx.config.edge_path:
         raise AuxBrowserError("未找到 Edge 可执行文件，检查 .env 的 EDGE_PATH")
     user_data_dir = Path(tempfile.mkdtemp(prefix="xiumi-toolbox-"))
@@ -95,11 +92,7 @@ async def _wait_devtools_port(proc, port_file: Path) -> int:
 
 
 async def _open_first_tab(cdp: CDPConnection, url: str) -> Tab:
-    """连接首个页面标签并导航到 url。
-
-    Args: cdp 已建立的连接; url 目标地址。Returns: Tab。
-    Raises: AuxBrowserError 无可用标签页。
-    """
+    """连接首个页面标签并导航到 url。 Args: cdp 已建立的连接; url 目标地址。Returns: Tab。 Raises: AuxBrowserError 无可用标签页。"""
     pages = await cdp.list_pages()
     if not pages:
         raise AuxBrowserError("Edge 没有可用的页面标签页")
@@ -138,11 +131,7 @@ async def open_aux(ctx: AppContext, url: str, headless: bool) -> dict:
 
 
 async def close_aux(ctx: AppContext) -> bool:
-    """关闭并清理后台浏览器。
-
-    Globals Used: None。Calls: cdp.close / 进程回收。
-    Args: ctx 上下文。Returns: 是否确有实例被关闭。
-    """
+    """关闭并清理后台浏览器。 Globals Used: None。Calls: cdp.close / 进程回收。 Args: ctx 上下文。Returns: 是否确有实例被关闭。"""
     aux = ctx.state.pop(STATE_KEY, None)
     if not aux:
         return False
