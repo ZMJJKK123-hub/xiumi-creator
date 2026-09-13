@@ -5,6 +5,8 @@ Rule2 §1 表现层组件；颜色常量在 theme，纯算法在 textutils，
 """
 from __future__ import annotations
 
+import re  # 助手回复按空行分段
+
 from rich.text import Text  # 富文本行，流水各元素的载体
 from textual import events  # Resize 事件（欢迎卡随窗口重排）
 from textual.containers import VerticalScroll  # 垂直滚动容器（消息流承载）
@@ -138,15 +140,19 @@ class Transcript(VerticalScroll):
         self._emit(Text(" "))
 
     def write_assistant(self, text: str) -> None:
-        """助手回复：前导空行 + ⏺ 粗体前缀 + 正文。
+        """助手回复：按空行分段，每个文本块一个 ⏺ 前缀（与 Claude Code 语义一致）。
 
         Args: text 回复文本。Returns: None。
         """
-        t = Text()
-        t.append("⏺ ", style="bold white")
-        t.append(text.rstrip())
+        blocks = [b.strip() for b in re.split(r"\n\s*\n", text.rstrip()) if b.strip()]
+        if not blocks:
+            return
         self._emit(Text(" "))
-        self._emit(t)
+        for block in blocks:
+            t = Text()
+            t.append("⏺ ", style="bold white")
+            t.append(block)
+            self._emit(t)
 
     def write_action(self, name: str, args: dict) -> None:
         """工具调用行：└ + 粗体工具名 + 灰色参数（按宽度截断）。
