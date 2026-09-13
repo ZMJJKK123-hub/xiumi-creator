@@ -13,7 +13,7 @@ SURFACE = "#161616"       # 模态屏/浮层底色
 USER_BAR_BG = "#2A2A2A"   # 用户命令条背景
 BORDER_MUTED = "#4a4a52"  # 常态边框（登录框/输入框/按钮）
 
-VERSION = "v0.1.1"        # 应用版本号：xiumi version / 欢迎卡标题共用
+VERSION = "v0.2.0"        # 应用版本号：xiumi version / 欢迎卡标题共用
 
 # 主界面 CSS：布局三区（流水/spinner/输入框）+ 底部状态栏 + 模态屏
 APP_CSS = f"""
