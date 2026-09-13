@@ -1,8 +1,8 @@
 """思考过程面板：内联于消息流的独立滚动思考视窗。
 
-状态机：STREAMING（流式，5 行视窗自动追尾）→ COLLAPSED（一行提示）
-⇄ EXPANDED（ctrl+o，10 行视窗，从头阅读）。
-文本连续追加渲染（非逐行），节流刷新降低重绘开销。
+默认收起：思考进行时仅单行「✻ thinking Ns · ctrl+o 展开」实时跳秒，
+想观看流式按 ctrl+o 原位展开 10 行视窗（文本连续追加，独立滚动），
+思考结束收起为「✻ 思考了 Ns · ctrl+o 展开」。
 """
 from __future__ import annotations
 
@@ -36,6 +36,7 @@ class ThinkingPanel(Vertical):
         self._buf = ""
         self._last = 0.0
         self._t0 = 0.0
+        self._in_round = False  # 思考轮进行中（reset 判定用）
         self._scroll = None
         self._text = None
         self._status = None
@@ -59,21 +60,30 @@ class ThinkingPanel(Vertical):
         self.add_class(state)
 
     def begin_round(self) -> None:
-        """新思考轮开始：清空文本，进入流式形态。"""
+        """新思考轮开始：默认收起为单行提示，想看流式再 ctrl+o 展开。"""
         self._t0 = time.time()
         self._buf = ""
+        self._in_round = True
         self._refresh(pin=True)
-        self._switch("streaming")
+        if self._status is not None:  # 挂载前仅累积，提示行挂载后由 reasoning 补写
+            self._status.update(Text("✻ thinking · ctrl+o 展开", style=f"dim {ACCENT}"))
+        self._switch("collapsed")
 
     def reasoning(self, delta: str) -> None:
-        """思考增量连续追加（节流渲染；视窗贴底时自动追尾）。"""
+        """思考增量连续累积；收起态下单行提示实时跳秒。"""
         self._buf += delta
         if self._text is None:
             return  # 尚未挂载，仅累积
         now = time.monotonic()
-        if now - self._last >= REFRESH_S:
-            self._last = now
-            self._refresh()
+        if now - self._last < REFRESH_S:
+            return
+        self._last = now
+        self._refresh()
+        if self._status is not None and self.has_class("collapsed"):
+            elapsed = time.time() - self._t0
+            self._status.update(
+                Text(f"✻ thinking {elapsed:.0f}s · ctrl+o 展开", style=f"dim {ACCENT}")
+            )
 
     def _refresh(self, pin: bool = False) -> None:
         """重绘思考文本；贴底（或强制）时滚动到最新内容。"""
@@ -86,6 +96,7 @@ class ThinkingPanel(Vertical):
 
     def end_round(self, interrupted: bool = False) -> None:
         """思考轮结束：最终渲染并收起为一行提示。"""
+        self._in_round = False
         self._refresh(pin=True)
         if self._status is None:
             return
@@ -105,8 +116,8 @@ class ThinkingPanel(Vertical):
             self._switch("collapsed")
 
     def reset(self) -> None:
-        """任务终结：仍在流式则收起为已中断提示。"""
-        if self.has_class("streaming"):
+        """任务终结：思考中被打断则改标为已中断，正常完成不覆盖。"""
+        if self._in_round:
             self.end_round(interrupted=True)
 
 
