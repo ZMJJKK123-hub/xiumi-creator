@@ -1,4 +1,10 @@
-"""Tab：面向单个标签页的高级封装（evaluate / 注入 JS 库 / 截图 / 文件注入 / 真实按键）。"""
+"""Tab 封装：全部插件操作页面的统一入口（基础设施层的门面）。
+
+架构定位：cdp 基础设施；上游 plugins/*（工具 handler）与 tui/commands（/login 导航）；
+下游 connection.send（CDP）+ jslib.js（window.__agent 模拟用户操作）。
+两条操作路线：agent(fn,...) 走注入库模拟真实用户（点击/输入），
+evaluate(...) 直接执行 JS；截图与文件上传是唯二必须用 CDP 原生命令的场景。
+"""
 from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 
 import base64  # 截图 base64 解码

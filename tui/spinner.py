@@ -1,6 +1,9 @@
-"""任务进行中的 spinner：六帧符号 + 固定 thinking 字样 + 秒数。
+"""任务进行中的 spinner：忙碌态的持续反馈。
 
-数据与渲染分离：帧序列取自 Claude Code 实际行为（调研确认）；
+架构定位：tui 表现层；状态机由 app._tick_spinner 每 0.12s 驱动（仅忙碌时），
+渲染写入 #spinner 部件。与 thinking.ThinkingPanel 的分工：本模块是
+"任务进行中"的整体反馈（帧动画+总耗时），思考面板是"模型在想什么"的内容呈现。
+
 动词固定为 thinking（用户指定，不再随机轮换）。
 """
 from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）

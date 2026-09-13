@@ -1,4 +1,10 @@
-"""OpenAI 兼容 LLM 客户端（支持智谱/DeepSeek/Kimi/opencode 网关等）。"""
+"""OpenAI 兼容 LLM 客户端：业务层对模型的唯一出口。
+
+架构定位：core 业务层；上游仅 core/agent.py（chat_stream）；
+下游 OpenAI SDK → 任意兼容网关（智谱/DeepSeek/Kimi/opencode，会话头自适应）。
+思考型模型的 reasoning_content 会在历史中回传（网关硬性要求），流式增量经
+on_reasoning/on_content 回调直达 tui/thinking.py 思考面板。
+"""
 from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 
 import asyncio  # 重试退避

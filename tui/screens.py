@@ -1,4 +1,10 @@
-"""模态屏家族：模型配置屏（/model）与快捷键帮助浮层（/help）。"""
+"""模态屏家族：覆盖在主屏之上的两个浮层。
+
+架构定位：tui 表现层；由 commands 路由（/model、/help）push_screen 打开。
+ModelConfigScreen 是配置写入口：保存经 core.config.persist_env 落 .env、
+经 actions.apply_* 即席重建 Agent——是 TUI 触达 core 配置层的唯一界面。
+"""
+
 from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 
 from rich.text import Text  # 帮助浮层的富文本构建

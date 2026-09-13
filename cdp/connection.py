@@ -1,7 +1,10 @@
 """CDP 浏览器级 WebSocket 连接（flat session 模式）。
 
+架构定位：cdp 基础设施最底层；上游 cdp/browser.py（连接管理）与
+plugins/tool_browser（后台实例）；下游 ws:// → Edge DevTools 协议。
 一条浏览器级连接即可操作所有标签页：Target.attachToTarget(flatten=True)
-拿到 sessionId 后，send() 携带 sessionId 即面向该标签页。
+拿到 sessionId 后，send() 携带 sessionId 即面向该标签页——整个项目
+对浏览器的全部操作最终都收敛为这里的 send() 调用。
 """
 from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 

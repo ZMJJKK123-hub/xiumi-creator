@@ -1,7 +1,9 @@
-"""欢迎卡内容构建：双栏内容与窄终端简版。
+"""欢迎卡内容构建：启动第一屏的信息架构。
 
-Rule2 §1 表现层构建逻辑独立成模块；边框由 widgets.WelcomeCard 的 CSS 提供，
-此处只产出卡内内容，宽度由部件传入，resize 时部件重算。
+架构定位：tui 表现层；唯一调用方 widgets.WelcomeCard.render（每次刷新重建，
+宽度自适应）；QUICKREF 速查表是命令系统的展示镜像（数据源在 commands）。
+产物是纯 rich 渲染对象——本模块不知道 Textual 的存在，可独立预览调试。
+
 """
 from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 

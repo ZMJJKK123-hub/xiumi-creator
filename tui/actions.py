@@ -1,7 +1,10 @@
-"""快捷键动作：从 App 薄壳拆出的键位行为集合。
+"""快捷键动作：全部全局键位的行为集合（App 薄壳的Mixin 伙伴）。
 
-Rule2 §3：Mixin 单一职责，app.py 只保留组装；宿主需提供
-transcript/_busy/_worker/_set_busy/open_help/refresh_welcome/query_one。
+架构定位：tui 表现层；键位声明在 app.BINDINGS，行为在这里实现，
+App 经多继承获得（宿主契约：transcript/_busy/_think/_set_busy 等）。
+两个混入：ShortcutActions（esc 中断/Tab 补全/ctrl+o 思考/PgUp 翻页/ctrl+l 清屏）
+与 LLMConfigActions（/model 保存后的即席生效→Agent 重建，衔接 core/llm）。
+
 """
 from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 

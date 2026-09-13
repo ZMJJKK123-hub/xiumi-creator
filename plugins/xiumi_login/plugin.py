@@ -1,7 +1,10 @@
-"""xiumi_login 插件：登录态检查。
+"""xiumi_login 插件：登录态检查（登录本身的协作方，不是执行方）。
 
-登录由用户在浏览器窗口自行完成（滑块/扫码均可），
-/login 命令只负责弹出官网、轮询检测、回报结果。
+架构定位：plugins 插件层；双出口——action "xiumi_login.check" 给
+tui/commands 的 /login 轮询用（每 2s 检测直到成功/超时），
+tool xiumi_login_check 给 LLM 的 SOP 开场自检用。登录动作由用户在
+浏览器手动完成（滑块/扫码），登录态持久化在 .edge-profile。
+
 """
 from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 

@@ -1,6 +1,10 @@
-"""browser 插件：主标签页通用操控（导航/观察/交互/执行/截图）。
+"""browser 插件：LLM 的"双手"——主标签页通用操控八件套。
 
-Rule1 §6.2：一工具一工厂，新增工具加函数即可（OCP）；
+架构定位：plugins 插件层；经 registry 注册给 agent（function calling），
+全部操作经 cdp.helpers.Tab（走注入的 window.__agent 模拟用户）。
+与 xiumi_editor 的分工：本插件管"任何网页都成立"的通用能力，
+秀米专属操作去 xiumi_editor；后台独立实例去 tool_browser。
+
 全部操作经 _tab_for 支持主标签页与后台工具箱双目标。
 """
 from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）

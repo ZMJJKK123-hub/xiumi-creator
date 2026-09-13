@@ -1,7 +1,10 @@
-"""终端组件：常驻欢迎卡、任务输入框与对话流水渲染器。
+"""终端组件：表现层的"积木"——欢迎卡与消息流两个核心部件。
 
-Rule2 §1 表现层组件；颜色常量在 theme，纯算法在 textutils，
-欢迎卡内容构建在 welcome——本文件只保留组件本身。
+架构定位：tui 表现层；上游 app.compose 装配、events 订阅方写入；
+Transcript 是全项目会话内容的唯一呈现容器（部件化：每条消息一个 Static，
+思考面板 thinking.ThinkingPanel 经 mount_thinking 内联挂载到发言之后）。
+配色在 theme、纯算法在 textutils、卡片内容在 welcome——本文件只有组件本体。
+
 """
 from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 

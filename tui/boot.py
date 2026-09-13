@@ -1,6 +1,9 @@
-"""启动编排：配置加载、Edge/CDP 连接、插件装载、登录检查。
+"""启动编排：项目的组装根——所有层的实例在这里诞生并接线。
 
-Rule2 §1 业务编排独立于 App 表现层；boot 失败经 App 的提示通道上报。
+架构定位：tui 表现层（编排属组装职责）；上游 App.on_mount；
+按序接线：load_config → setup_logging → refresh_welcome → EdgeBrowser
+→ CDPConnection → Tab → PluginManager.load_all（工具注册）→ Agent 构造
+→ 登录态检查上报。此后 AppContext 持有全部依赖供各层共享。
 """
 from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 

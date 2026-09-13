@@ -1,4 +1,9 @@
-"""tool_browser 插件：后台浏览器工具箱（自 dsh-plugins/packages/tool-browser 适配）。
+"""tool_browser 插件：后台辅助浏览器（独立 Edge 实例，默认无头）。
+
+架构定位：plugins 插件层；与 browser 插件的分工——browser 管主标签页
+（秀米主战场），本插件开独立临时实例查资料/试页面，互不干扰；
+对它的 JS 执行/截图复用 browser 插件的 background=true 参数，避免同型工具重复。
+
 
 只保留它独有能力对应的生命周期工具：
   browser_open(url, headless) / browser_close()

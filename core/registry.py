@@ -1,6 +1,11 @@
-"""工具注册表 + 插件契约 + 插件管理器。
+"""插件系统：核心与能力的扩展边界（本项目"插件化"的心脏）。
 
-插件 = plugins/<name>/plugin.py 中的一个 Plugin 子类。
+架构定位：core 业务层；三重角色——①Tool/Plugin 契约（核心不知道任何
+具体插件，新能力=新目录）；②ToolRegistry 工具表（LLM function calling
+的声明与分发）；③AppContext 依赖容器（config/events/cdp/tab/state，
+贯穿全层共享，boot 组装期填充）。装载链：PluginManager 扫描
+plugins/*/plugin.py → on_load → tools()/actions() 注册进表。
+
   - tools():   暴露给 LLM 的工具（function calling）
   - actions(): 只给 TUI/内部调用的动作（如登录，凭据不进 LLM 上下文）
   - on_load(): 插件加载钩子

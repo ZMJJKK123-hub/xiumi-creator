@@ -1,6 +1,10 @@
-"""xiumi_editor 插件：秀米排版编辑器的业务工具。
+"""xiumi_editor 插件：产品核心价值所在——秀米排版编辑器业务工具。
 
-新建草稿 / 设标题 / 插入排版 HTML / 插入本地图片 / 保存 / 预览截图 / 复制到公众号。
+架构定位：plugins 插件层；由 registry 注册给 agent，SOP（core/prompts）
+指导模型按"建草稿→设标题→逐块插入→插图→保存"的顺序调用本插件。
+排版规范（微信内联样式白名单）在 prompts.py 约束生成侧，
+HTML 落地经 Tab.editorInsert 走秀米自身粘贴管道，避免破坏其内部结构。
+
 选择器见同目录 selectors.json（recon.py 踩点后更新）。
 """
 from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）

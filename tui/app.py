@@ -1,4 +1,10 @@
-"""主应用薄壳：布局组装与事件接线（boot/commands/theme/spinner 各自独立成模块）。"""
+"""主应用薄壳：表现层的组装点，只做"接线"不含业务。
+
+架构定位：tui 表现层顶点；上游用户输入；下游 commands.dispatch（命令）、
+agent.run（任务）、boot（启动编排）、events 总线订阅（渲染）。
+阅读顺序建议：boot.py（怎么启动）→ commands.py（命令怎么路由）
+→ 本文件 on_input_submitted（输入怎么变成命令/任务）→ widgets.py（怎么渲染）。
+"""
 from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 
 import asyncio  # _set_window 的异步任务派发
@@ -140,7 +146,13 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
             self.suggest.on_text(event.value)
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
-        """提交处理：模态屏短路→候选确定→命令路由→任务流。Calls: dispatch/_start_task。Args: event。Returns: None。"""
+        """提交处理：模态屏短路→候选确定→命令路由→任务流。Calls: dispatch/_start_task。Args: event。Returns: None。
+
+        链路：本方法是用户意图的总分发口——
+        /xx 命令 → commands.dispatch（策略表命中即处理完毕）；
+        未命中/普通文本 → _can_run_task 三关卡 → agent.run（core/agent.py）
+        → llm 流式 + registry.call 插件工具 → 事件回 _wire_events 渲染。
+        """
         if len(self.screen_stack) > 1:
             event.stop()
             return

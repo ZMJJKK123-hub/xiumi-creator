@@ -1,4 +1,9 @@
-"""强类型事件总线：TUI、Agent、插件之间的唯一通信通道。
+"""强类型事件总线：业务层到表现层的唯一回流通道（架构解耦的关键件）。
+
+架构定位：core 业务层；发布方 agent.py/插件 handler，订阅方几乎只有
+tui/app._wire_events（一处接线，全类事件落流水）。上行用事件、下行用
+方法调用——TUI 永远不轮询业务层。新增事件=EventType 加成员+Event 加字段。
+
 
 Rule2 §4 契约优先：事件以 Event dataclass 传递，禁止裸 dict/裸 kwargs；
 订阅端按 EventType 分发，载荷字段在类定义中显式声明。

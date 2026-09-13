@@ -1,4 +1,10 @@
-"""Agent 主循环：LLM function calling → 插件工具执行 → 结果回填。"""
+"""Agent 主循环：项目的中枢，连接 LLM / 插件 / TUI 三方。
+
+架构定位：core 业务层核心；上游 tui/app._run_task（任务提交）；
+下游 llm.chat_stream（对话）与 registry.call（插件工具执行）；
+过程事件经 events.EventBus 推给 TUI 渲染，思考流经 sink 回调直达思考面板。
+数据流：任务文本 → 多轮 [LLM → 工具调用 → 结果回填] → TASK_DONE。
+"""
 from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 
 import json  # 工具参数 JSON 解析与结果序列化

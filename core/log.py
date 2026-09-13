@@ -1,4 +1,9 @@
-"""统一日志配置：项目级 logger 工厂，落地到数据目录的滚动文件。
+"""统一日志：跨切面模块（不属任何业务层，各层都可安全依赖）。
+
+架构定位：全项目共用的 get_logger 工厂；落地 XIUMI_HOME/logs/app.log
+滚动文件（这是排查现场问题的第一入口）。基线：应用内禁止 print，
+级别语义与脱敏要求见 agent.md Rule2 §5。
+
 
 Rule2 §5 基线：应用内禁止 print 追踪运行轨迹，统一经 get_logger() 获取 logger；
 级别语义 DEBUG/INFO/WARNING/ERROR；日志文件位于 XIUMI_HOME/logs/app.log。

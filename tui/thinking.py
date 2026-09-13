@@ -1,7 +1,9 @@
-"""思考过程面板：内联于消息流的独立滚动思考视窗。
+"""思考过程面板：Agent 思考流的 UI 呈现（表现层与业务层的流式接缝）。
 
-默认收起：思考进行时仅单行「✻ thinking Ns · ctrl+o 展开」实时跳秒，
-想观看流式按 ctrl+o 原位展开 10 行视窗（文本连续追加，独立滚动），
+架构定位：tui 表现层；数据入口是 ThinkingSink——core/agent._llm_round 经
+它转发 LLM 的思考增量（同事件循环直调，不走事件总线，避免每 token 一事件）；
+面板由 app._start_task 挂载进 Transcript（紧跟用户发言），ctrl+o 全局键位
+经 actions.action_toggle_thinking 驱动。默认收起单行跳秒，展开 10 行独立滚动，
 思考结束收起为「✻ 思考了 Ns · ctrl+o 展开」。
 """
 from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）

@@ -1,4 +1,10 @@
-"""全局配置：从 .env 与环境变量加载，附 Edge 路径自动探测。
+"""配置共享内核：全层注入的 Config DTO 与 .env 持久化。
+
+架构定位：core 层共享内核——cdp 基础设施也依赖它（依赖注入而非反向调用，
+boot 把 Config 实例注入 EdgeBrowser）；上游 load_config（boot 组装期）与
+persist_env（/model 配置屏保存）。三态数据目录：源码运行=项目根 /
+pip 安装=用户主目录 ~/.xiumi-agent / 环境变量 XIUMI_HOME 覆盖。
+
 
 数据目录解析（安装为全局包后开箱即用）：
 - 源码目录运行（dev，main.py 在项目根）：数据（.env / .edge-profile / screenshots）留在项目内；

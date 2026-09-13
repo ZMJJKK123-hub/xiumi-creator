@@ -1,4 +1,38 @@
-"""xiumi-agent 入口。
+"""
+==================== xiumi-agent 全项目架构图 ====================
+（新读者从这里开始；每个模块的头部注释都标有自己的架构定位）
+
+四层单向依赖（上层可调下层，反之禁止）：
+
+  ┌─ tui/ 表现层 ─────────────────────────────────────────────┐
+  │ Textual TUI：欢迎卡/消息流/思考面板/输入框/命令路由          │
+  │   app.py 薄壳 ← boot.py 组装根 ← commands/screens/widgets │
+  └──────────────┬────────────────────────────────────────────┘
+                 │ 事件总线 core/events.py（唯一通道，DTO 事件）
+  ┌──────────────▼────────────────────────────────────────────┐
+  │ core/ 业务层：agent.py 主循环（LLM function calling）       │
+  │   llm.py 客户端 / registry.py 插件契约+注册表 / prompts.py  │
+  │   AppContext（registry 内）= 贯穿全层的依赖容器             │
+  └──────────────┬────────────────────────────────────────────┘
+                 │ 工具调用（插件 handler，经 registry.call）
+  ┌──────────────▼────────────────────────────────────────────┐
+  │ plugins/ 插件层：browser(通用操控) xiumi_login(登录检查)    │
+  │   xiumi_editor(排版核心) tool_browser(后台辅助浏览器)      │
+  └──────────────┬────────────────────────────────────────────┘
+                 │ 全部经 cdp/helpers.Tab 操作页面
+  ┌──────────────▼────────────────────────────────────────────┐
+  │ cdp/ 基础设施：connection.py(ws) → browser.py(Edge 生命周期)│
+  │   → helpers.py(Tab 封装) + jslib.js(注入页面的操作模拟库)   │
+  └───────────────────────────────────────────────────────────┘
+                 ↘ ws://127.0.0.1:9222 → 用户本机 Edge（独立 profile）
+
+一次任务的完整数据流：
+用户输入 → tui/app.on_input_submitted → commands.dispatch（斜杠命令）
+  → 未命中则 agent.run（system prompts + 历史）→ llm.chat_stream 流式
+  → 回复经 events.CHAT → 流水渲染；工具调用经 registry.call → 插件
+  → Tab(CDP) 操作秀米页面 → 结果回填对话 → 循环至任务完成。
+
+xiumi-agent 入口。
 
 用法（安装全局命令后任意目录可用，等价于 python main.py）:
   xiumi            启动 TUI

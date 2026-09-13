@@ -1,4 +1,10 @@
-"""注入页面的 JS 操作库加载器：从同目录 jslib.js 资源读取源码。
+"""JS 操作库加载器：把 jslib.js 送进页面形成 window.__agent。
+
+架构定位：cdp 基础设施的"弹药库"；唯一调用方 helpers.Tab.ensure_lib。
+jslib.js 实现点击/输入/查找等用户操作模拟（派发真实事件序列骗过
+AngularJS 等框架），Python 侧经 call_expr 生成调用表达式——
+资源与加载分离，改选择器逻辑只动 jslib.js 不动 Python。
+
 
 库内容以 window.__agent 挂载：outline/click/type/press/find/findByText/
 getText/focusEnd/pasteHTML/appendHTML/editorInsert/editorInfo/triggerChange。

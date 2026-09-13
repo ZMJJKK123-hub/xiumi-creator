@@ -1,4 +1,10 @@
-"""Edge 启动与标签页管理（独立自动化 profile）。"""
+"""Edge 生命周期与标签页管理：基础设施层的"资源池"。
+
+架构定位：cdp 基础设施；上游 tui/boot._start_browser（组装期唯一调用方）；
+下游 connection.py（建连）与 helpers.Tab（页面操作）。
+产出 AppContext.tab（单标签页收敛），供全部插件工具复用；
+独立 profile 保证登录态持久化且不污染用户日常浏览器。
+"""
 from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 
 import subprocess  # 拉起 Edge 进程

@@ -1,6 +1,8 @@
-"""命令路由：斜杠命令的注册与分发（策略表，替代 if-elif 链）。
+"""命令路由：用户斜杠命令 → 处理器的唯一映射（策略表，无 if-elif 链）。
 
-Rule1 §6.2 OCP：新增命令 = 新增处理器并 register，不改分发核心。
+架构定位：tui 表现层；上游 app.on_input_submitted 与 autocomplete（补全确定）；
+COMMAND_INFO 描述表被 autocomplete（候选渲染）与帮助屏共用。
+新增命令 = 增加处理器函数 + 登记到 _routes 与 COMMAND_INFO，两处即可全链生效。
 """
 from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 

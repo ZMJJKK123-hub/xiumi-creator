@@ -1,6 +1,10 @@
-"""斜杠命令自动补全：输入 / 弹候选、Tab 循环、Enter 确定。
+"""斜杠命令自动补全：命令系统的交互前置层。
 
-Rule2 §1 交互逻辑独立：过滤/导航/确定决策集中于此，渲染经宿主容器。
+架构定位：tui 表现层；上游 app.on_input_changed（刷新候选）与
+on_input_submitted（Enter 决策）；候选数据复用 commands.COMMAND_INFO
+（命令描述表单一事实源）；渲染写入 #suggest-box 面板。决策三态：
+无参命令直接执行、带参命令补全待参、普通文本透传给任务流。
+
 """
 from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 

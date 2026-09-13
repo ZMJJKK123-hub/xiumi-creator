@@ -1,6 +1,9 @@
-"""后台工具箱浏览器的生命周期管理（供 tool_browser 插件与 browser 插件共享）。
+"""后台工具箱浏览器的生命周期管理（供 tool_browser 与 browser 插件共享）。
 
-状态挂在 ctx.state[STATE_KEY]，主标签页工具通过 background=true 参数复用。
+架构定位：plugins 插件层的共享后端；上游 plugin.py 的 browser_open/close
+与 browser 插件的 background=true 工具（get_aux_tab）；下游自管一个
+独立 Edge 进程 + CDPConnection（不经主浏览器，互不干扰）。
+状态挂 ctx.state[STATE_KEY]，进程退出即回收，不落任何持久化。
 """
 from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写法）
 
