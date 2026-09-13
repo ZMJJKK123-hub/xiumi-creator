@@ -1,7 +1,7 @@
 """快捷键动作：从 App 薄壳拆出的键位行为集合。
 
 Rule2 §3：Mixin 单一职责，app.py 只保留组装；宿主需提供
-transcript/_busy/_worker/_set_busy/open_help/_welcome_model/_welcome_cwd。
+transcript/_busy/_worker/_set_busy/open_help/refresh_welcome/query_one。
 """
 from __future__ import annotations
 
@@ -42,6 +42,11 @@ class ShortcutActions:
             self.suggest.step(-1)
         else:
             self.screen.focus_previous()
+
+    def action_toggle_thinking(self) -> None:
+        """ctrl+o：思考过程收起 ⇄ 展开（10 行独立滚动视窗）。"""
+        if len(self.screen_stack) == 1 and self._think is not None:
+            self._think.toggle()
 
     def action_scroll_transcript_up(self) -> None:
         """PgUp：流水上翻一页。"""

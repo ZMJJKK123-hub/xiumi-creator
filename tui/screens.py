@@ -28,6 +28,7 @@ class HelpScreen(ModalScreen[None]):
             ("/help", "帮助，任意键关闭"),
             ("esc", "中断任务"),
             ("PgUp/PgDn", "翻看消息"),
+            ("ctrl+o", "思考过程展开/收起"),
             ("ctrl+l", "清屏"),
             ("ctrl+q", "退出"),
         ]

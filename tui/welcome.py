@@ -23,6 +23,7 @@ QUICKREF = [
     "/shot     截图",
     "/help     帮助",
     "esc       中断任务",
+    "ctrl+o    思考展开",
     "ctrl+q    退出",
 ]
 

@@ -28,12 +28,13 @@ class Agent:
         self.llm = llm
         self.bus = bus
 
-    async def run(self, task: str) -> None:
-        """执行一轮用户任务。
+    async def run(self, task: str, sink=None) -> None:
+        """执行一轮用户任务（LLM 思考增量经 sink 实时外送）。
 
         Globals Used: SYSTEM_PROMPT（模块级系统提示词）。
-        Calls: LLMClient.chat / _exec_tool_calls / bus.emit。
-        Args: task 用户任务文本。Returns: None；结束发 TASK_DONE。
+        Calls: LLMClient.chat_stream / _exec_tool_calls / bus.emit。
+        Args: task 用户任务文本; sink 可选思考回调对象
+            （round_start/reasoning/content/round_done 四方法）。Returns: None。
         """
         messages: list[dict] = [
             {"role": "system", "content": SYSTEM_PROMPT},
@@ -43,7 +44,7 @@ class Agent:
         tool_calls_total = 0
 
         for _step in range(self.ctx.config.max_steps):
-            reply = await self.llm.chat(messages, self.registry.schemas())
+            reply = await self._llm_round(messages, sink)
             if reply.get("content"):
                 await self.bus.emit(Event(EventType.CHAT, role="assistant", text=reply["content"]))
             if not reply.get("tool_calls"):
@@ -65,6 +66,23 @@ class Agent:
                 message=f"已达最大步数 {self.ctx.config.max_steps}，任务中断。请缩小任务范围后重试。",
             )
         )
+
+    async def _llm_round(self, messages: list[dict], sink) -> dict:
+        """单轮 LLM 调用：通知 sink 起止，思考增量透传。
+
+        Args: messages 对话历史（就地追加）; sink 思考回调对象或 None。
+        Returns: 标准化回复 dict。
+        """
+        if sink is None:
+            return await self.llm.chat_stream(messages, self.registry.schemas())
+        sink.round_start()
+        try:
+            return await self.llm.chat_stream(
+                messages, self.registry.schemas(),
+                on_reasoning=sink.reasoning, on_content=sink.content,
+            )
+        finally:
+            sink.round_done()
 
     async def _exec_tool_calls(self, messages: list, tool_calls: list) -> int:
         """执行一批工具调用并回填结果消息。

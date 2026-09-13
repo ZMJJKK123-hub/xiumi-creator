@@ -26,6 +26,7 @@ from tui.commands import CommandRouter  # 斜杠命令路由
 from tui.screens import HelpScreen  # 帮助浮层
 from tui.spinner import SpinnerState  # spinner 状态机
 from tui.theme import ACCENT, APP_CSS  # 主题常量与全局 CSS
+from tui.thinking import ThinkingPanel, ThinkingSink  # 思考流面板与回调适配
 from tui.widgets import Transcript, WelcomeCard  # 常驻欢迎卡与流水（输入框用通用 Input）
 from tui.window import WindowScheduler  # 浏览器窗口显隐
 
@@ -51,6 +52,7 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
     BINDINGS = [
         ("ctrl+q", "quit", "退出"),
         ("ctrl+l", "clear_logs", "清屏"),
+        ("ctrl+o", "toggle_thinking", "思考展开"),
         ("escape", "interrupt", "中断任务"),
         Binding("tab", "suggest_next", "下一候选", priority=True),
         Binding("shift+tab", "suggest_prev", "上一候选", priority=True),
@@ -78,11 +80,14 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
         self._boot_failed = False
         self._worker = None
         self._task_started = 0.0
+        self._think: ThinkingPanel | None = None  # on_mount 缓存引用
+        self._tick_timer = None  # spinner 定时器（on_unmount 停表）
 
     def compose(self) -> ComposeResult:
-        """布局：欢迎卡 / 流水 / spinner / 候选面板 / 输入框 / 底栏。"""
+        """布局：欢迎卡 / 流水 / 思考面板 / spinner / 候选面板 / 输入框 / 底栏。"""
         yield WelcomeCard()
         yield Transcript(id="transcript")
+        yield ThinkingPanel(id="think-panel")
         yield Static("", id="spinner")
         yield Static("", id="suggest-box")
         yield Rule(id="rule-top")
@@ -96,11 +101,17 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
         )
 
     def on_mount(self) -> None:
-        """挂载：聚焦输入框、接线事件、启动 boot。"""
+        """挂载：聚焦输入框、接线事件、缓存思考面板引用、启动 boot。"""
         self._wire_events()
+        self._think = self.query_one(ThinkingPanel)
         self.query_one("#task", Input).focus()
-        self.set_interval(0.12, self._tick_spinner)
+        self._tick_timer = self.set_interval(0.12, self._tick_spinner)
         self.run_worker(self._boot_task(), thread=False)
+
+    def on_unmount(self) -> None:
+        """拆除：停掉 spinner 定时器，避免部件卸载后回调查询。"""
+        if self._tick_timer is not None:
+            self._tick_timer.stop()
 
     async def _boot_task(self) -> None:
         """boot worker：调用 tui.boot 编排，取消仅记日志。"""
@@ -168,15 +179,16 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
         return False
 
     def _start_task(self, task_text: str) -> None:
-        """进入忙碌态并启动任务 worker。"""
+        """进入忙碌态并启动任务 worker（思考流接入思考面板）。"""
         self._set_busy(True)
         self._task_started = time.time()
-        self._worker = self.run_worker(self._run_task(task_text), thread=False)
+        sink = ThinkingSink(self._think)
+        self._worker = self.run_worker(self._run_task(task_text, sink), thread=False)
 
-    async def _run_task(self, task_text: str) -> None:
+    async def _run_task(self, task_text: str, sink: ThinkingSink) -> None:
         """任务 worker：执行 Agent 循环（总超时兜底），异常与取消均转为用户可见。"""
         try:
-            await asyncio.wait_for(self.agent.run(task_text), timeout=TASK_TIMEOUT_S)
+            await asyncio.wait_for(self.agent.run(task_text, sink=sink), timeout=TASK_TIMEOUT_S)
         except asyncio.CancelledError:
             raise  # 中断提示由 esc 动作统一报告，避免双重输出
         except asyncio.TimeoutError:
@@ -185,7 +197,9 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
             self.logger.error("任务异常", exc_info=exc)
             self._chat("system", f"⚠ 任务异常中断: {type(exc).__name__}: {exc}")
         finally:
-            self._set_busy(False)
+            if self.is_running:  # 拆除期部件已销毁，跳过复位
+                self._think.reset()
+                self._set_busy(False)
 
     # ---- 忙碌态 ----
     def _set_busy(self, busy: bool) -> None:
@@ -202,8 +216,8 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
         self._window.set(state)
 
     def _tick_spinner(self) -> None:
-        """定时推进 spinner 并刷新显示（仅忙碌时）。"""
-        if not self._busy:
+        """定时推进 spinner 并刷新显示（仅忙碌且运行中）。"""
+        if not self._busy or not self.is_running:
             return
         self.spinner.tick()
         self.query_one("#spinner", Static).update(self.spinner.render(self._task_started))

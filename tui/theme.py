@@ -32,6 +32,17 @@ Screen {{ background: {BG}; }}
     scrollbar-size: 1 1;
 }}
 #spinner {{ height: auto; padding: 0 1; }}
+#think-panel {{ height: auto; margin: 0 1; padding: 0; border: round {BORDER_MUTED}; border-title-color: {GRAY}; }}
+#think-panel.hidden {{ display: none; }}
+#think-panel.collapsed {{ border: none; }}
+#think-log {{
+    height: 5; border: none; padding: 0 1; background: #101010;
+    scrollbar-background: #101010; scrollbar-color: #3a3a3f; scrollbar-size: 1 1;
+}}
+#think-panel.tall #think-log {{ height: 10; }}
+#think-status {{ display: none; height: 1; padding: 0 1; color: {GRAY}; }}
+#think-panel.collapsed #think-status {{ display: block; }}
+#think-panel.collapsed #think-log {{ display: none; }}
 #suggest-box {{
     display: none; height: auto; margin: 0 1;
     background: #101010; border: round {BORDER_MUTED}; padding: 0 1;
