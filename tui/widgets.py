@@ -13,7 +13,7 @@ from textual.containers import VerticalScroll  # 垂直滚动容器（消息流�
 from textual.widgets import Static  # 静态部件基类（单条消息载体）
 
 from tui.textutils import fold_multiline, truncate_cells  # 折行与显示宽度截断
-from tui.theme import GRAY, RED, USER_BAR_BG  # 主题常量
+from tui.theme import GRAY, RED  # 主题常量
 from tui.welcome import build_title, build_welcome  # 欢迎卡标题与内容构建
 
 
@@ -96,13 +96,13 @@ class Transcript(VerticalScroll):
         """当前是否贴底（决定写入后是否跟随滚动）。"""
         return self.scroll_y >= self.max_scroll_y - 1
 
-    def _emit(self, content) -> None:
+    def _emit(self, content, cls: str | None = None) -> None:
         """追加一条消息部件；原贴底时跟随滚动到末尾。
 
-        Args: content rich 渲染对象。Returns: None。
+        Args: content rich 渲染对象; cls 附加样式类（如用户条边框）。Returns: None。
         """
         pin = self._pinned()
-        self.mount(Static(content))
+        self.mount(Static(content, classes=cls) if cls else Static(content))
         if pin:
             self.call_after_refresh(self.scroll_end, animate=False)
 
@@ -128,15 +128,13 @@ class Transcript(VerticalScroll):
         self.remove_children()
 
     def write_user(self, text: str) -> None:
-        """用户命令条：全宽背景条 + 多行折叠摘要 + 尾随空行。
+        """用户命令条：白色圆角边框 + 透明底（无填充，杜绝终端渲染差异）+ 尾随空行。
 
         Args: text 用户原始输入。Returns: None。
         """
-        width = max(self._w() - 2, 12)
         folded, _ = fold_multiline(text)
-        line = truncate_cells(f"> {folded}", width)
-        pad = " " * max(width - _cells(line), 0)
-        self._emit(Text(line + pad, style=f"on {USER_BAR_BG} bold white"))
+        line = truncate_cells(f"> {folded}", max(self._w() - 6, 12))
+        self._emit(Text(line, style="bold white"), cls="msg-user")
         self._emit(Text(" "))
 
     def write_assistant(self, text: str) -> None:

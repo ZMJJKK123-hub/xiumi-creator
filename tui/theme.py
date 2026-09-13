@@ -24,6 +24,7 @@ Screen {{ background: {BG}; }}
     border: round {ACCENT}; border-title-color: {ACCENT};
     background: transparent;
 }}
+.msg-user {{ border: round {INPUT_BORDER}; padding: 0 1; width: 100%; height: auto; background: transparent; }}
 #transcript {{
     height: 1fr; padding: 0 1; background: transparent;
     scrollbar-background: #101010;
