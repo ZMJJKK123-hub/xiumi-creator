@@ -80,7 +80,7 @@ def main() -> None:
         return
 
     if arg in ("version", "--version", "-V"):
-        from tui.widgets import VERSION
+        from tui.theme import VERSION
 
         print(f"xiumi-agent {VERSION}")
         return
