@@ -31,7 +31,7 @@ from tui.commands import CommandRouter  # 斜杠命令路由
 from tui.spinner import SpinnerState  # spinner 状态机
 from tui.theme import ACCENT, APP_CSS  # 主题常量与全局 CSS
 from tui.thinking import ThinkingPanel, ThinkingSink  # 思考流面板与回调适配
-from tui.widgets import Transcript, WelcomeCard  # 常驻欢迎卡与流水（输入框用通用 Input）
+from tui.widgets import PasteInput, Transcript, WelcomeCard  # 常驻欢迎卡、流水与粘贴输入框
 from tui.window import WindowScheduler  # 浏览器窗口显隐
 
 # 插件目录：从已安装包定位
@@ -96,7 +96,7 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
         yield Static("", id="suggest-box")
         with Horizontal(id="input-box"):
             yield Static("> ", id="prompt-sym")
-            yield Input(placeholder='Try "写一篇秋天咖啡店探店推文"', id="task")
+            yield PasteInput(placeholder='Try "写一篇秋天咖啡店探店推文"', id="task")
         yield Horizontal(
             Static("", id="hint"),
             id="footer",
@@ -209,7 +209,7 @@ class XiumiAgentApp(LLMConfigActions, ShortcutActions, App):
             self.logger.error("任务异常", exc_info=exc)
             self._chat("system", f"⚠ 任务异常中断: {type(exc).__name__}: {exc}")
         finally:
-            if self.is_running:  # 拆除期部件已销毁，跳过复位
+            if self.is_running and self._think is not None:  # 拆除期部件已销毁，跳过复位
                 self._think.reset()
                 self._set_busy(False)
 

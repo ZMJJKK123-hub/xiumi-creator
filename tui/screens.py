@@ -14,6 +14,7 @@ from textual.screen import ModalScreen  # 模态屏基类
 from textual.widgets import Button, Input, Label, Static  # 基础组件
 
 from tui.theme import ACCENT, GRAY  # 主题色
+from tui.widgets import PasteInput  # 支持 Ctrl+V 系统剪贴板粘贴的输入框
 
 
 class HelpScreen(ModalScreen[None]):
@@ -33,6 +34,7 @@ class HelpScreen(ModalScreen[None]):
             ("/shot", "截图"),
             ("/help", "帮助，任意键关闭"),
             ("esc", "中断任务"),
+            ("ctrl+v", "粘贴（系统剪贴板）"),
             ("PgUp/PgDn", "翻看消息"),
             ("ctrl+o", "思考过程展开/收起"),
             ("ctrl+l", "清屏"),
@@ -63,10 +65,10 @@ class ModelConfigScreen(ModalScreen[bool]):
         Calls: Input/Button/Static 构造。Args: None。Returns: 布局生成器。"""
         with Vertical(id="cfg-box"):
             yield Label("模型配置", classes="login-title")
-            yield Label("Tab 切换，Enter 下一项", classes="login-sub")
-            yield Input(placeholder="模型名，如 deepseek-chat", id="cfg-model")
-            yield Input(placeholder="API Key", id="cfg-key", password=True)
-            yield Input(placeholder="接口地址，如 https://open.bigmodel.cn/api/paas/v4", id="cfg-url")
+            yield Label("Tab 切换，Enter 下一项 · Ctrl+V 粘贴", classes="login-sub")
+            yield PasteInput(placeholder="模型名，如 deepseek-chat", id="cfg-model")
+            yield PasteInput(placeholder="API Key", id="cfg-key", password=True)
+            yield PasteInput(placeholder="接口地址，如 https://open.bigmodel.cn/api/paas/v4", id="cfg-url")
             with Horizontal():
                 yield Button("保存", id="btn-save", variant="default")
                 yield Button("取消", id="btn-cancel", variant="default")

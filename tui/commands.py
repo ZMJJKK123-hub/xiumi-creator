@@ -8,6 +8,8 @@ from __future__ import annotations  # 延迟注解求值（3.9+ 联合类型写�
 
 from pathlib import Path  # /file 的路径校验
 from typing import Any, Awaitable, Callable  # 处理器与宿主类型标注
+import asyncio  # 轮询间隔
+import time  # 超时计时
 
 
 # 命令处理器签名：接收宿主 App 与用户输入原文，返回是否已消费
@@ -36,8 +38,7 @@ async def _cmd_login(app: Any, raw: str) -> bool:
 
 def _login_wait(app: Any):
     """构造登录等待协程：弹官网 → 转圈轮询 → 成功/超时/取消回报。 Args: app 宿主。Returns: 协程函数。"""
-    import asyncio  # 轮询间隔
-    import time  # 超时计时
+
 
     async def _run() -> None:
         """登录等待主体。Args: None。Returns: None。"""

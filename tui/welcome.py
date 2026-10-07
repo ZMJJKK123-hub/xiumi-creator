@@ -26,6 +26,7 @@ QUICKREF = [
     "/help     帮助",
     "esc       中断任务",
     "ctrl+o    思考展开",
+    "ctrl+v    粘贴",
     "ctrl+q    退出",
 ]
 

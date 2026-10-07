@@ -1,4 +1,4 @@
-"""终端组件：表现层的"积木"——欢迎卡与消息流两个核心部件。
+"""终端组件：表现层的"积木"——欢迎卡/消息流/粘贴输入框。
 
 架构定位：tui 表现层；上游 app.compose 装配、events 订阅方写入；
 Transcript 是全项目会话内容的唯一呈现容器（部件化：每条消息一个 Static，
@@ -13,11 +13,62 @@ import re  # 助手回复按空行分段
 from rich.text import Text  # 富文本行，流水各元素的载体
 from textual import events  # Resize 事件（欢迎卡随窗口重排）
 from textual.containers import VerticalScroll  # 垂直滚动容器（消息流承载）
-from textual.widgets import Static  # 静态部件基类（单条消息载体）
+from textual.widgets import Input, Static  # 输入框基类（PasteInput 继承）与静态部件
 
+from tui.clipboard import read_clipboard  # 系统剪贴板读取（Ctrl+V 粘贴底座）
 from tui.textutils import fold_multiline, truncate_cells  # 折行与显示宽度截断
 from tui.theme import GRAY, RED  # 主题常量
 from tui.welcome import build_title, build_welcome  # 欢迎卡标题与内容构建
+from core.log import get_logger  # 粘贴链路诊断日志
+
+_logger = get_logger("paste")
+
+
+class PasteInput(Input):
+    """支持 Ctrl+V 读系统剪贴板的输入框。
+
+    类职责：覆盖 Input.action_paste——Textual 原生实现只读应用内内存剪贴板
+    （app.clipboard，应用内复制才有内容），终端未拦截 Ctrl+V（mintty/
+    Alacritty/conhost 等原样发送 0x16）时粘贴无效甚至误删选中文字；
+    本类改读系统剪贴板，语义对齐原生 _on_paste（取首行、选区优先替换），
+    系统剪贴板为空时回落原生行为（保留应用内复制内容的粘贴）。
+    类变量：无新增（键位绑定继承 Input 的 ctrl+v → paste）。
+    生命周期：与普通 Input 一致，compose 装配即用。
+    """
+
+    BINDINGS = [
+        ("ctrl+v", "paste", "粘贴"),
+        ("shift+insert", "paste", "粘贴"),
+    ]
+
+    def action_paste(self) -> None:
+        """ctrl+v：系统剪贴板首行按选区插入。
+
+        Globals Used: None。Calls: read_clipboard / insert_text_at_cursor / replace。
+        Args: None。Returns: None。
+        """
+        raw = read_clipboard()
+        _logger.info("action_paste 触发：系统剪贴板读取 %d 字符", len(raw))
+        if not raw:
+            super().action_paste()  # 回落：应用内剪贴板（应用内 Ctrl+C 的内容）
+            return
+        lines = raw.splitlines()
+        line = lines[0].strip() if lines else ""
+        if not line:
+            return  # 剪贴板只有空白/换行，不产生任何变更
+        selection = self.selection
+        if selection.is_empty:
+            self.insert_text_at_cursor(line)
+        else:
+            self.replace(line, *selection)
+
+    def _on_paste(self, event: events.Paste) -> None:
+        """终端括号粘贴路径（Windows Terminal 等拦截 Ctrl+V 时走这里）。
+
+        仅记日志：Textual 分发会沿 MRO 自动调用 Input._on_paste 完成插入，
+        此处不得再 super() 调用（会双次插入）。
+        """
+        _logger.info("bracketed paste 触发：%d 字符", len(event.text))
 
 
 class WelcomeCard(Static):
