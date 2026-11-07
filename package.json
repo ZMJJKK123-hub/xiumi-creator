@@ -1,0 +1,33 @@
+{
+  "name": "xiumi-terminal-ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Strict TypeScript terminal rendering for xiumi-agent",
+  "engines": {
+    "node": "^22.13.0 || ^24.0.0 || >=26.0.0"
+  },
+  "scripts": {
+    "start": "tsx src/main.tsx",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "lint": "eslint src tests",
+    "test": "vitest run",
+    "check": "npm run typecheck && npm run lint && npm test && npm run build"
+  },
+  "dependencies": {
+    "ink": "8.0.0",
+    "react": "19.3.1",
+    "string-width": "8.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "@types/react": "19.3.0",
+    "eslint": "10.14.0",
+    "ink-testing-library": "4.0.0",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.1",
+    "vitest": "5.1.0"
+  }
+}

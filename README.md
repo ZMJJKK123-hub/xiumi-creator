@@ -2,6 +2,28 @@
 
 终端 TUI 形态的公众号排版 Agent：通过 CDP 直接驱动你本机的 **Edge** 打开 **秀米（xiumi.us）**，由 LLM 调用插件工具自动完成「写稿 → 排版 → 插图 → 保存草稿」。
 
+## TypeScript 终端渲染预览
+
+新渲染层使用 **TypeScript strict + React + Ink**，源码位于 `src/terminal_ui/`。
+当前阶段可以独立运行和验证界面：消息重排、分轮思考、滚动、命令补全、配置表单、任务文件读取和中断。
+界面会明确标注「渲染预览 / 模拟运行」；任务与登录使用模拟数据，模型配置仅在内存生效，截图尚未连接浏览器。
+现有真实排版功能继续通过下面的 Python 入口运行。
+
+```powershell
+npm ci
+npm start -- --demo              # 交互预览；需要真实终端
+npm start -- --snapshot          # 输出一帧，可用于重定向或 CI
+npm run check                   # strict 类型检查、lint、测试、构建
+node ts-dist/main.js --demo      # 构建后直接运行
+```
+
+推荐使用本项目验证过的 Node.js 24，其他版本需满足 `package.json` 中的 engines 约束。
+输入任务回车可以观察两轮思考与工具事件；`/file "带空格的路径/task.md"` 会读取完整 UTF-8 正文作为任务。
+`Ctrl+O` 展开/收起思考，`Alt+←/→` 选择历史轮次，`Ctrl+↑/↓` 在该轮内部滚动；消息区使用滚轮或 PgUp/PgDn，上翻后新消息不会抢走阅读位置，空输入时 End 回到底部。
+`Ctrl+L` 清除已完成历史并保留当前任务，Esc 中断任务或关闭浮层，`Ctrl+Q` 退出。
+
+渲染结构、运行服务接入契约和验证范围见 [架构说明](docs/ARCHITECTURE.md)。
+
 ## 架构
 
 ```
@@ -81,6 +103,9 @@ python main.py recon        # dump 登录页/首页 DOM 树 + 截图到 recon/
 
 ```
 core/      agent 主循环 / LLM 客户端 / 工具注册表 / 插件契约 / 事件总线
+src/       TypeScript 组合入口 / 严格类型终端渲染 / 平台与日志适配
+tests/     TypeScript 状态、运行边界和真实 Ink 组件交互测试
+docs/      渲染架构与 RuntimePort 接入契约
 cdp/       CDP 连接 / Edge 管理 / Tab 封装 / 注入式 JS 操作库
 tui/       Textual 界面（聊天面板、动作面板、登录/账密模态屏）
 plugins/   browser 通用操控 · tool_browser 后台浏览器(dsh适配) · xiumi_login 登录 · xiumi_editor 排版

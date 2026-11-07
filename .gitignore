@@ -12,3 +12,7 @@ build/
 venv/
 .zcode/
 .vscode/
+node_modules/
+ts-dist/
+.test-output/
+*.tsbuildinfo
